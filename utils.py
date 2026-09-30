@@ -52,7 +52,9 @@ def restore_checkpoint(ckpt_dir, state, device):
         logging.warning(f"No checkpoint found at {ckpt_dir}. Returned the same state as input")
         return state
     else:
-        loaded_state = torch.load(ckpt_dir, map_location=device)
+        # torch 2.6+ 默认 weights_only=True，checkpoint 含 EMA 自定义类 state_dict 会拒载；
+        # 文件是训练流程自己写的、可信，显式关闭
+        loaded_state = torch.load(ckpt_dir, map_location=device, weights_only=False)
         state['optimizer'].load_state_dict(loaded_state['optimizer'])
         state['model'].module.load_state_dict(loaded_state['model'], strict=False)
         state['ema'].load_state_dict(loaded_state['ema'])

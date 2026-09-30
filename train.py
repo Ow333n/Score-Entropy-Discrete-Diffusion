@@ -15,12 +15,15 @@ from omegaconf import OmegaConf, open_dict
 def main(cfg):
     ngpus = cfg.ngpus
     if "load_dir" in cfg:
-        hydra_cfg_path = os.path.join(cfg.load_dir, ".hydra/hydra.yaml")
+        load_dir = cfg.load_dir
+        hydra_cfg_path = os.path.join(load_dir, ".hydra/hydra.yaml")
         hydra_cfg = OmegaConf.load(hydra_cfg_path).hydra
 
-        cfg = utils.load_hydra_config_from_run(cfg.load_dir)
-        
-        work_dir = cfg.work_dir
+        cfg = utils.load_hydra_config_from_run(load_dir)
+
+        # 修复：保存的 .hydra/config.yaml 里没有 work_dir 键（configs/config.yaml 就不定义它，
+        # 运行时才由 train.py 注入），load_dir 本身就是 run 的工作目录
+        work_dir = os.path.abspath(load_dir)
         utils.makedirs(work_dir)
     else:
         hydra_cfg = HydraConfig.get()

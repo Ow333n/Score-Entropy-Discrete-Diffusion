@@ -35,8 +35,8 @@ def rotate_half(x):
     )
 
 
-@torch.jit.script
-def _apply_rotary_pos_emb_torchscript(qkv, cos, sin):
+def _apply_rotary_pos_emb(qkv, cos, sin):
+    # plain torch ops (the torchscript version breaks on torch >= 2.6)
     return (qkv * cos) + (rotate_half(qkv) * sin)
 
 
@@ -48,5 +48,5 @@ def apply_rotary_pos_emb(qkv, cos, sin):
         return flash_attn.layers.rotary.apply_rotary_emb_qkv_(
             qkv, cos, sin
         )
-    except:
-        return _apply_rotary_pos_emb_torchscript(qkv, cos, sin)
+    except Exception:
+        return _apply_rotary_pos_emb(qkv, cos, sin)

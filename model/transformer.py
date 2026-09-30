@@ -5,7 +5,11 @@ import numpy as np
 import math
 
 from einops import rearrange
-from flash_attn.flash_attn_interface import flash_attn_varlen_qkvpacked_func
+try:
+    from flash_attn.flash_attn_interface import flash_attn_varlen_qkvpacked_func
+except ImportError:
+    # fallback: no flash-attn installed (e.g. newer GPU / torch versions) -> use SDPA
+    flash_attn_varlen_qkvpacked_func = None
 # from flash_attn.ops.fused_dense import FusedMLP, FusedDense
 from huggingface_hub import PyTorchModelHubMixin
 from omegaconf import OmegaConf
@@ -169,18 +173,29 @@ class DDiTBlock(nn.Module):
             qkv = rotary.apply_rotary_pos_emb(
                 qkv, cos.to(qkv.dtype), sin.to(qkv.dtype)
             )
-        qkv = rearrange(qkv, 'b s ... -> (b s) ...')
-        if seqlens is None:
-            cu_seqlens = torch.arange(
-                0, (batch_size + 1) * seq_len, step=seq_len,
-                dtype=torch.int32, device=qkv.device
-            )
+        if flash_attn_varlen_qkvpacked_func is not None:
+            qkv = rearrange(qkv, 'b s ... -> (b s) ...')
+            if seqlens is None:
+                cu_seqlens = torch.arange(
+                    0, (batch_size + 1) * seq_len, step=seq_len,
+                    dtype=torch.int32, device=qkv.device
+                )
+            else:
+                cu_seqlens = seqlens.cumsum(-1)
+            x = flash_attn_varlen_qkvpacked_func(
+                qkv, cu_seqlens, seq_len, 0., causal=False)
+
+            x = rearrange(x, '(b s) h d -> b s (h d)', b=batch_size)
         else:
-            cu_seqlens = seqlens.cumsum(-1)
-        x = flash_attn_varlen_qkvpacked_func(
-            qkv, cu_seqlens, seq_len, 0., causal=False)
-        
-        x = rearrange(x, '(b s) h d -> b s (h d)', b=batch_size)
+            # fallback: standard multi-head attention via torch SDPA
+            # qkv is [B, S, 3, H, D]; SDPA expects [B, H, S, D]
+            # 保持 autocast 的 bf16, 与上游 flash-attn (bf16 输入) 一致;
+            # 若强制 fp32, SDPA 掉回 math 后端会物化注意力矩阵, 训练时 OOM
+            q, k, v = qkv.unbind(dim=2)
+            q, k, v = q.transpose(1, 2), k.transpose(1, 2), v.transpose(1, 2)
+            x = F.scaled_dot_product_attention(q, k, v, dropout_p=0.0)
+            x = x.transpose(1, 2)
+            x = rearrange(x, 'b s h d -> b s (h d)')
 
         x = bias_dropout_scale_fn(self.attn_out(x), None, gate_msa, x_skip, self.dropout)
 
