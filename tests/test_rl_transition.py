@@ -15,7 +15,7 @@ from rl import transition as T
 
 D = 8            # toy vocab 7 + MASK
 MASK = D - 1
-DSIGMA = 0.5
+DSIGMA = 0.05
 
 
 def _graph():
@@ -23,10 +23,14 @@ def _graph():
 
 
 def _toy_score(B=2, L=5, seed=0):
-    """正真 score [B, L, D] (exp 后), MASK 列 = 0 (模拟 forward scatter)。"""
+    """正真 score [B, L, D] (exp 后), MASK 列 = 1.0。
+
+    采样路径: forward 里 scatter 把 x_t 位置 logit 置 0 → get_score_fn(sampling=True)
+    返回 exp(score) → MASK 位置 score[MASK] = exp(0) = 1 (实测 /tmp/stag_debug.py)。
+    """
     g = torch.Generator().manual_seed(seed)
     s = torch.rand(B, L, D, generator=g) + 0.1
-    s[..., MASK] = 0.0
+    s[..., MASK] = 1.0
     return s
 
 
@@ -87,11 +91,13 @@ def test_recompute_bitwise_identical():
 def test_pg_grad_finite():
     graph = _graph()
     x_t = torch.full((1, 1), MASK, dtype=torch.long)
-    dsigma = torch.tensor([DSIGMA])
     theta = torch.tensor([0.3, 0.7, 0.2, 0.4, 0.1, 0.6, 0.5, 0.0], requires_grad=True)
     score = theta.exp()[None, None, :].clone()
-    score[..., MASK] = 0.0
+    score[..., MASK] = 1.0        # 采样路径 exp(0)=1
+    dsigma = torch.tensor([0.05]) # 真实轨迹量级 (stag_MASK = e^{dσ} + (1-e^{dσ})Σscore > 0)
     w = T.transition_weights(graph, x_t, score, dsigma)
+    ok, _ = T.validity_check(w)
+    assert ok
     logpi = T.policy_log_probs(w)
     L = -1.0 * logpi[0, 0, 0]
     L.backward()
@@ -105,7 +111,7 @@ def test_pg_loss_independent_of_reward():
     _, _, w = _toy_w()
     w = w.clone().requires_grad_()
     logpi = T.policy_log_probs(w)
-    L = (-A.detach() * logpi[..., 0]).sum()
+    L = (-A.detach().sum() * logpi[..., 0]).sum()
     L.backward()
     assert r.grad is None
 
@@ -170,6 +176,17 @@ def test_validity_gate_negative_tolerance():
     ok, stats = T.validity_check(w)
     assert not ok
 
+# --- §34.15b: staggered 负值条件 → gate 拒绝 (防御语义保留) ---
+def test_validity_gate_rejects_negative_stag():
+    graph = _graph()
+    x_t = torch.full((1, 1), MASK, dtype=torch.long)
+    dsigma = torch.tensor([2.0])                    # 大 dσ (128 步网格第一步量级)
+    s = torch.full((1, 1, D), 10.0)                 # 大 Σscore (制造 Σscore > e^{dσ}/(e^{dσ}-1))
+    s[..., MASK] = 1.0
+    w = T.transition_weights(graph, x_t, s, dsigma)
+    ok, stats = T.validity_check(w)
+    assert not ok and stats["n_neg"] > 0            # gate 正确拒绝, 不 clamp
+
 # --- §34.16: 非 MASK 位置 logπ = 0 (吸收语义, exclude from PG) ---
 def test_nonmask_logpi_zero():
     graph = _graph()
@@ -187,12 +204,14 @@ def test_nonmask_logpi_zero():
 def test_stay_action_has_grad():
     graph = _graph()
     x_t = torch.full((1, 1), MASK, dtype=torch.long)
-    dsigma = torch.tensor([DSIGMA])
     theta = torch.tensor([0.3, 0.7, 0.2, 0.4, 0.1, 0.6, 0.5, 0.0], requires_grad=True)
     score = theta.exp()[None, None, :].clone()
-    score[..., MASK] = 0.0
+    score[..., MASK] = 1.0
+    dsigma = torch.tensor([0.05])
     w = T.transition_weights(graph, x_t, score, dsigma)
-    # stay 权重 = stag[MASK]·exp(−dσ) > 0 (依赖 score 和 → 依赖 θ)
+    ok, _ = T.validity_check(w)
+    assert ok
+    # stay 权重 = stag[MASK]·trans[MASK] > 0 (依赖 score 和 → 依赖 θ)
     assert w[0, 0, MASK].item() > 0
     logpi = T.policy_log_probs(w)
     L = -1.0 * logpi[0, 0, MASK]      # 对 stay 动作做 PG
@@ -205,9 +224,9 @@ def test_ppo_negative_advantage_clipping():
     # ρ=3, A=−1: min(ρA, clipA) = min(−3, −1.2) = −3 → L = +3
     L = T.ppo_loss_per_position(torch.tensor([math.log(3.0)]), torch.tensor([0.0]), torch.tensor([-1.0]))
     assert abs(L.item() - 3.0) < 1e-6
-    # ρ=0.5, A=−1: min(−0.5, −0.5) → L = +0.5
+    # ρ=0.5, A=−1: min(−0.5, clip(0.5)=0.8×(−1)=−0.8) = −0.8 → L = +0.8 (惩罚以 clip 为限)
     L = T.ppo_loss_per_position(torch.tensor([math.log(0.5)]), torch.tensor([0.0]), torch.tensor([-1.0]))
-    assert abs(L.item() - 0.5) < 1e-6
+    assert abs(L.item() - 0.8) < 1e-6
     # ρ=0.5, A=+1: min(0.5, 0.8) → L = −0.5
     L = T.ppo_loss_per_position(torch.tensor([math.log(0.5)]), torch.tensor([0.0]), torch.tensor([1.0]))
     assert abs(L.item() + 0.5) < 1e-6

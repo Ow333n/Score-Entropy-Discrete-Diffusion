@@ -18,11 +18,11 @@ def test_reward_no_grad():
     x0 = torch.tensor([[3, 5, 7, 9]])
     x_gen = torch.tensor([[3, 4, 8, 9]])
     m0 = torch.tensor([[True, True, False, True]])
-    x0 = x0.clone().requires_grad_(True)
-    r = R.m0_reward(x0, x_gen, m0)
+    x0f = x0.float().clone().requires_grad_(True)
+    r = R.m0_reward(x0f, x_gen, m0)
     assert not r.requires_grad
     assert r.grad_fn is None
-    assert x0.grad is None
+    assert x0f.grad is None
 
 # --- §34.19: reward 只计算 M0 ---
 def test_reward_m0_only():
@@ -30,7 +30,7 @@ def test_reward_m0_only():
     x_gen = torch.tensor([[10, 99, 30, 40, 50]])   # 位置 1 错 (M0), 位置 2 错 (非 M0)
     m0 = torch.tensor([[True, True, False, True, False]])
     r = R.m0_reward(x0, x_gen, m0)
-    assert r.item() == 2.0 / 3.0                  # M0 = {0,1,3}, 只 0,3 对
+    assert abs(r.item() - 2.0 / 3.0) < 1e-6       # M0 = {0,1,3}, 只 0,3 对 (fp32)
 
 def test_reward_m0_empty():
     x0 = torch.tensor([[10, 20]])

@@ -62,10 +62,10 @@ def validity_check(w, tol=NEG_TOL):
         rel_neg_mass = (neg_mass / mass.clamp(min=1e-12)).max().item()
     ok = bool(finite.all()) and bool((mass > 0).all()) and rel_neg_mass <= tol
     stats = dict(
-        n_nonfinite=int((~finite).sum()),
-        n_neg=int(neg.sum()),
+        n_nonfinite=int((~finite).sum().detach()) if w.requires_grad else int((~finite).sum()),
+        n_neg=int(neg.sum().detach()) if w.requires_grad else int(neg.sum()),
         rel_neg_mass=float(rel_neg_mass),
-        min_mass=float(mass.min()),
+        min_mass=float(mass.min().detach()) if w.requires_grad else float(mass.min()),
     )
     return ok, stats
 
