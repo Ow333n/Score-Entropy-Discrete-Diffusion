@@ -253,4 +253,15 @@
 - [x] smoke 垃圾已清（用户授权）：vanilla256-* 4 目录 + exp_local/wikitext103（Day-3 smoke），回收 ~13GB（WSL 用量 82G→69G）
 - [x] **P1 评估完成（84/84，~4h，远快于预注册的 23h 保守估计）**：Gate 1 manifest hash PASS + Gate 2 两 seed checkpoint_1020 逐字节 PASS；84 JSON 全部 parse、per-sample 全 N=500
 - [x] **P1 判读完成**（reports/p1_early_dynamics_analysis.md，§3.3 预注册口径）：CPI 变化定位 s1=(250,500) / s2=(500,750)（EMA，同窗口方向一致）→ **连续衰减非瞬时阶跃**，0→250 平台、250→1020 下降、1020→2500 平台；OrderGap 更早启动（0→50 已显著）且 s2 持续到 2500；signed δ 全程 ≈0（对称收缩非方向偏置）；pair-distance 下降由 d[1,4] 主导、σ=3 桶主导
+- [x] **pre-RL Git 固化完成**：`pre-rl-compatibility-v1` tag @ de69bb9（171 文件：协议/报告/结果 JSON/manifest/figs 全入库；.gitignore 补 *.pt/.venv、manifest jsonl 例外）；main 已 push origin（当前 HEAD 6b9b110 含审计产出）
+- [x] **RL 阶段规划（未训练）**：reports/repo_audit_summary.md（复用/新增组件清单）+ reports/rl_reverse_transition_analysis.md（log-score→reverse rate→τ-leaping/staggered 两采样器的完整推导；policy=per-position categorical；rollout 与 logπ 公式必须同源）+ post_training_rl_plan_v0.1_DRAFT.md（47 节，DRAFT 未冻结）
+- [x] 关键结论：model 输出 log-score（采样时 exp）；CPI 口径 clean_log_probs=log_softmax(score[...,:D-1])；Euler=τ-leaping 一阶近似（可能负概率）、analytic=staggered-score 一步转移；RL 起点=formal-s1 EMA-10200 + fresh optimizer；reward=span 位置级 token acc；G=4 group-relative；LR probe 3e-6 优先；pilot save_at 0/50/100/250/500
+- [ ] 存储 blocker 依旧：D: ~19GB free，RL pilot（5 全量 ckpt ≈13.5GB + trajectory 缓存）前必须先清理/compact/迁盘
+- [x] **RL plan v0.2 DRAFT 完成**（external review 11 条修正全纳入）：§14 policy=w/Σw 同源口径 + §14.1 validity gate（Euler 负权重→取消候选资格）；§18 reward=M0 初始 mask 口径 + G 共享初始腐蚀；§22 mean-centered advantage；§25 uniform timestep MC target（unbiased 声明限定）；§26 PPO min 形式 + per-position ratio（RL-1 joint on-policy 无 clip）；§13 EMA num_updates reset + raw primary；§31/§43 轨迹禁止全量落盘 + checkpoint 精简（pilot <10GB、前置 free disk ≥30GB）；§34 单测 22 项
+- [x] ⚠️ external review 的 P1 OrderGap "0→50 initial increase" 表述与 frozen 数据方向相反（数据为 −0.03 nats 下降），v0.2 §2 按数据写并 flag（§46.10 待与 review 确认）
+- [x] **review 第二轮定案已入 v0.2**：analytic=primary policy（Euler 降级 debug baseline）、K=1、|M0|=0 才重采样、constant LR（无 warmup，避免 confound）、执行顺序 A-J 写入 §45
+- [x] **rl/transition.py + rl/reward.py + 22 项单测已实现**（2ba3210）：policy=w/Σw 同源、validity gate、mean-centered advantage、PPO min 形式、M0 reward；单测已过 7 项（含 K=1 MC toy 解析对拍——期间修了我 toy 的 inverse-CDF 反号 bug 与 0.5 链式因子遗漏）
+- [ ] **⚠️ 重要发现（blocker）**：staggered_score 在 score[MASK]=0（forward scatter）下 MASK 列权重 = (1−e^{dσ})·Σscore **恒为负**（任何 dσ>0）→ analytic 采样器 stay 权重为负、gumbel-argmax 下 stay 几乎不被选中；真实 rollout 的负权重规模待 GPU 探针量化（/tmp/analytic_weights_probe.py，batch 16→4 修 OOM；用户玩游戏占 GPU，暂停）。test_pg_grad_finite/test_stay_action_has_grad 在 toy 上按预期失败（gate 检测到负权重）。若实测证实负权重，policy 口径需修订（候选：exact reverse-transition 闭式分布 或 修正 stagger 的 MASK 列），回 review
+- [ ] 待用户 GPU 空闲后：跑探针 → 定 policy 口径 → 修单测 → 128vs1024 gate → RL-G0 → RL-1 smoke → LR probe
+
 - [ ] P2a 前必须先解决长期存储（D: 现剩 ~19GB，openwebtext 数据集 15-40GB 放不下；可选 Optimize-VHD 回收 ~10G slack / 清 lrprobe+pilot-132632 ~7.8G / vhdx 迁 E:/F:）
