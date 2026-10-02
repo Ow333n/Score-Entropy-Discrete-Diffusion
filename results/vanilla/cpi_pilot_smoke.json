@@ -1,0 +1,167 @@
+{
+  "tag": "pilot-cpi-smoke",
+  "model_path": "exp_local/regime_a/pilot-150849",
+  "manifest_file": "manifests/regime_a_eval_v1.jsonl",
+  "manifest_sha256": "1897bd14bf92e61b2664a4950a3b60f14e09ac0d454d58d22e88815207f263d3",
+  "git_commit": "84dc4b45c2ce6e43b10424ff0fc4cd83582c2e68",
+  "python_version": "3.12.3",
+  "torch_version": "2.14.1+cu130",
+  "cuda_runtime": "13.0",
+  "protocol_version": "v4.1",
+  "summary": {
+    "name": "pilot-cpi-smoke",
+    "n_samples": 500,
+    "cpi_abs": 0.267578125,
+    "cpi_abs_sem": 0.01956559480312316,
+    "cpi_rms": 0.51171875,
+    "delta_mean": -0.0172119140625,
+    "delta_sem": 0.02288475820722441,
+    "delta_median": 0.0,
+    "delta_abs_p90": 0.75,
+    "delta_abs_p99": 2.1592202186584473,
+    "delta_sd": 0.51171875,
+    "local_ce": 3.828125,
+    "local_ce_sem": 0.07861176483397697,
+    "token_acc": 0.36189961433410645,
+    "token_acc_sem": 0.010172252333517666
+  },
+  "buckets": {
+    "sigma": [
+      {
+        "bucket": 0,
+        "n": 125,
+        "lo": 0.5,
+        "hi": 0.5,
+        "cpi_abs": 0.1904296875,
+        "delta_mean": -0.045654296875
+      },
+      {
+        "bucket": 1,
+        "n": 125,
+        "lo": 0.5,
+        "hi": 1.5,
+        "cpi_abs": 0.181640625,
+        "delta_mean": -0.0439453125
+      },
+      {
+        "bucket": 2,
+        "n": 125,
+        "lo": 1.5,
+        "hi": 3.0,
+        "cpi_abs": 0.3203125,
+        "delta_mean": -0.01019287109375
+      },
+      {
+        "bucket": 3,
+        "n": 125,
+        "lo": 3.0,
+        "hi": 3.0,
+        "cpi_abs": 0.375,
+        "delta_mean": 0.0306396484375
+      }
+    ],
+    "mask_ratio": [
+      {
+        "bucket": 0,
+        "n": 125,
+        "lo": 0.1111111119389534,
+        "hi": 0.4444444477558136,
+        "cpi_abs": 0.16015625,
+        "delta_mean": -0.033203125
+      },
+      {
+        "bucket": 1,
+        "n": 125,
+        "lo": 0.4444444477558136,
+        "hi": 0.7777777910232544,
+        "cpi_abs": 0.2236328125,
+        "delta_mean": 0.00970458984375
+      },
+      {
+        "bucket": 2,
+        "n": 125,
+        "lo": 0.7777777910232544,
+        "hi": 0.9230769276618958,
+        "cpi_abs": 0.287109375,
+        "delta_mean": -0.091796875
+      },
+      {
+        "bucket": 3,
+        "n": 125,
+        "lo": 0.9230769276618958,
+        "hi": 1.0,
+        "cpi_abs": 0.396484375,
+        "delta_mean": 0.04638671875
+      }
+    ],
+    "span_len": [
+      {
+        "bucket": 0,
+        "n": 125,
+        "lo": 10.0,
+        "hi": 21.0,
+        "cpi_abs": 0.326171875,
+        "delta_mean": 0.0244140625
+      },
+      {
+        "bucket": 1,
+        "n": 125,
+        "lo": 22.0,
+        "hi": 32.0,
+        "cpi_abs": 0.27734375,
+        "delta_mean": -0.0888671875
+      },
+      {
+        "bucket": 2,
+        "n": 125,
+        "lo": 32.0,
+        "hi": 41.0,
+        "cpi_abs": 0.283203125,
+        "delta_mean": 0.031005859375
+      },
+      {
+        "bucket": 3,
+        "n": 125,
+        "lo": 41.0,
+        "hi": 50.0,
+        "cpi_abs": 0.1796875,
+        "delta_mean": -0.03564453125
+      }
+    ],
+    "pair_distance": [
+      {
+        "bucket": 0,
+        "n": 125,
+        "lo": 1.0,
+        "hi": 4.0,
+        "cpi_abs": 0.578125,
+        "delta_mean": -0.03662109375
+      },
+      {
+        "bucket": 1,
+        "n": 125,
+        "lo": 4.0,
+        "hi": 8.0,
+        "cpi_abs": 0.275390625,
+        "delta_mean": -0.00872802734375
+      },
+      {
+        "bucket": 2,
+        "n": 125,
+        "lo": 8.0,
+        "hi": 15.0,
+        "cpi_abs": 0.12451171875,
+        "delta_mean": -0.0225830078125
+      },
+      {
+        "bucket": 3,
+        "n": 125,
+        "lo": 15.0,
+        "hi": 41.0,
+        "cpi_abs": 0.08837890625,
+        "delta_mean": -0.00112152099609375
+      }
+    ]
+  },
+  "peak_vram_gb": 1.33373184
+}

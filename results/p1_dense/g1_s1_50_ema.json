@@ -1,0 +1,17 @@
+{
+  "tag": "p1-s1-50-ema",
+  "model_path": "exp_local/regime_a/p1-s1-020240",
+  "source": "local-ema (exp_local/regime_a/p1-s1-020240)",
+  "step": 50,
+  "protocol_version": "v4.2",
+  "manifest_file": "manifests/regime_a_eval_v1.jsonl",
+  "manifest_sha256": "1897bd14bf92e61b2664a4950a3b60f14e09ac0d454d58d22e88815207f263d3",
+  "git_commit": "84dc4b45c2ce6e43b10424ff0fc4cd83582c2e68",
+  "masked_nll": 4.28125,
+  "masked_nll_sem": 0.08105746418436738,
+  "token_acc": 0.3219764232635498,
+  "token_acc_sem": 0.009823673722660343,
+  "greedy_per_pos_hit_rate": 0.4427329748449696,
+  "greedy_span_exact_match": 0.02,
+  "n_greedy": 100
+}

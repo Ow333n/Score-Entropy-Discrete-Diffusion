@@ -1,0 +1,69 @@
+# Regime A Vanilla span-infilling 256-seq 训练配置 (protocol §7/§9, recipe_version=vanilla_v1)
+defaults:
+  - _self_
+  - model: small
+  - override hydra/launcher: basic
+
+ngpus: 1
+tokens: 50257
+
+# §9.1: 所有条件统一 dropout=0 (model/small.yaml 默认 0.1, 必须 override)
+model:
+  dropout: 0.0
+
+training:
+  name: vanilla256
+  batch_size: 32        # effective batch (G0 §4.1 语义: micro = batch // (ngpus*accum))
+  accum: 1
+  n_iters: 300
+  log_freq: 25
+  eval_freq: 500
+  snapshot_freq_for_preemption: 100
+  save_at_steps: []     # formal run 的显式 analysis checkpoints (§3.2), pilot 为空
+  ema: 0.9999
+  pilot:                # §3.1 冻结值 (pilot 前已写入 protocol/regime_a_protocol.yaml)
+    n_pilot_max: 30000
+    plateau_window: 6
+    eps_rel: 0.005
+    alpha: 1.2
+
+optim:
+  optimizer: AdamW
+  lr: 3e-4
+  beta1: 0.9
+  beta2: 0.999
+  eps: 1e-8
+  weight_decay: 0
+  warmup: 2500
+  grad_clip: 1.0
+
+graph:
+  type: absorb
+  file: data
+
+noise:
+  type: loglinear
+  sigma_min: 1e-4
+  sigma_max: 20
+
+data:
+  train: wikitext103
+  valid: wikitext103
+  cache_dir: data
+  seq_len: 256
+  span_min: 10
+  span_max: 50
+  eval_chunks: 64
+
+seeds:
+  model_seed: 0
+  data_order_seed: 0
+  corruption_seed: 0
+
+model_path: louaaron/sedd-small
+load_dir: null
+work_dir: exp_local/regime_a
+
+hydra:
+  run:
+    dir: exp_local/regime_a/${now:%Y.%m.%d}/${now:%H%M%S}

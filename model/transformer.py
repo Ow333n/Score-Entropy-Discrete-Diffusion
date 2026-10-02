@@ -281,7 +281,16 @@ class SEDD(nn.Module, PyTorchModelHubMixin):
 
         with torch.cuda.amp.autocast(dtype=torch.bfloat16):
             for i in range(len(self.blocks)):
-                x = self.blocks[i](x, rotary_cos_sin, c, seqlens=None)
+                if self.training:
+                    # 梯度检查点 (Day 4): 每个 block 在 train 模式保留 ~540MB 激活
+                    # (fp32 LayerNorm 输出 + MLP 中间量 + autograd 图), 12 blocks 在
+                    # batch 32 x 256 下 ≈ 6.5GB, 8GB 卡必然 OOM。checkpoint 只影响
+                    # backward 的显存与 RNG (重算时 dropout mask 不同), forward 输出
+                    # 逐位不变 —— 冻结的 pretrained CPI/OrderGap 基线不受影响。
+                    x = torch.utils.checkpoint.checkpoint(
+                        self.blocks[i], x, rotary_cos_sin, c, None, use_reentrant=True)
+                else:
+                    x = self.blocks[i](x, rotary_cos_sin, c, seqlens=None)
 
             x = self.output_layer(x, c)
 

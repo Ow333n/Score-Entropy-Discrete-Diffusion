@@ -1,5 +1,8 @@
 # MEMORY.md — SEDD 大作业每日任务记录
 
+> 研究提案 v2（2026-10-01）：`order_alignment_vs_compatibility_research_proposal_v2.md`（Order Alignment vs. Order Compatibility）
+> 本地执行计划（8GB 单卡适配版）：`local_execution_plan.md`（阶段 0-8 + Swap-SFT 显存配方 + 止损点）
+
 > 大作业三大目标：
 > 1. 读懂 SEDD 论文（arXiv:2310.16834）——Score Entropy 损失、连续→离散 score matching 的推广
 > 2. 实现 SEDD 的监督微调（SFT），在测试集上评估
@@ -12,6 +15,147 @@
 - GPU: RTX 5060 Ti (8GB, Blackwell sm_120), driver CUDA 13.1
 - 包管理器: uv 0.12.15（待创建虚拟环境 .venv）
 - 官方 environment.yml 是 conda + CUDA 11.8 + torch 2.0.1，**本机 Blackwell 显卡必须换用 torch ≥2.7 (cu128)**，flash-attn 2.2.2 也需替换或打补丁
+
+---
+
+## 2026-10-01（Day 4）研究项目开工：阶段 0 + 阶段 1 + 阶段 2 完成 ✅（v4.1 协议版）
+
+> ⚠️ 本日重要更正：**Day 3 记录的 "batch 4/accum 2 = eff 8" 是错的**。data.py 的 DataLoader 把 `config.batch_size // (ngpus×accum)` 当 micro-batch → config 里的 batch_size **本身就是 effective batch**。运行时核实（G0 §4.1，scripts/check_batch_semantics.py）：config batch=4/accum=2 → 实际 micro=2、optimizer step 吃 2×2=4 条序列、**B_eff=4**（Day 3 smoke 实际是 eff 4）。这就是 v4.1 协议 §2.2 坚持运行时核实的原因。
+
+### G0 正确性门：20/20 单元测试 + 3 项 GPU 检查全部通过 ✅
+- [x] §4.1 batch semantics 运行时核实：config 4 → micro 2 → eff **4**（见上，记录已更正）
+- [x] §4.2/4.4/4.5/4.6 玩具测试（compatibility/tests/：test_posterior 归一化/MASK排除/时间标量消掉/确定性、test_swap_delta 兼容 δ=0 不兼容 ln(3.2)、test_strict_reveal TF+sampled 记账/4 顺序/tie-breaking/fixed path/温度/TF 路径概率手算值）
+- [x] §4.7 residual time-dependence：同一状态 JSD(σ=0.5,1.5)=0.004、JSD(1.5,3.0)=0.012、JSD(0.5,3.0)=0.018（轻微时间依赖，量级小）；确定性检查逐位一致 ✓
+- [x] §4.8 严格揭示：不变式（mask−1/仅选中位置变/选中前是 MASK）作为运行时断言，违反抛错（含违反测试）；TF 与 sampled 两模式
+- [x] §4.9 全 autograd vs 重计算梯度等价：**fp32 ε_g < 1e-5、fp64 ε_g < 1e-9 通过** → Swap-SFT 进入门已开（training/swap.py 的 Pass A/B + sg(δ) 配方，逐状态 backward 保持显存峰值=单状态）
+- [x] 目录重构（§28）：compatibility/{posterior,cpi,order_gap}.py + tests/、training/swap.py、evaluation/{build_manifest,eval_cpi,eval_order_gap}.py、manifests/、protocol/、scripts/、results/{pretrained,pilot}/；旧 cpi_eval.py/test_cpi.py/run_cpi_baseline.py 已删除（迁移），旧结果移入 results/pilot/（标记为 exploratory，非正式基线）
+
+### 冻结资产（protocol v4.1）
+- [x] **manifest 已冻结**：`manifests/regime_a_eval_v1.jsonl`（500 样本，SHA-256=1897bd14…，§5A 不可变）：span-structured（wikitext103 test 256-chunk、span 10~50、σ 网格 {0.5,1.5,3.0} round-robin、span 外恒可见、i≠j 在 span 内、pair_distance 记录）+ 6 条路径（l2r/r2l/3 seeded random/pretrained 置信路径，tie_fraction=0.0072）
+- [x] **正式 pretrained 基线（N=500，results/pretrained/）**：
+  - **CPI_abs = 0.328 ± 0.023；CPI_RMS = 0.605；δ 均值 +0.003 ± 0.027（无偏）；median 0.0；|δ| p90=0.94 p99=2.29；δ_SD=0.605（效应量基线）**
+  - local CE = 4.281 ± 0.081；token acc = 0.322 ± 0.010；峰值显存 1.33GB
+  - 分桶结构（重要观察）：CPI 随 **σ** 升（0.23→0.48）、随 **mask_ratio** 升（0.19→0.47）、随 **span_len** 降（0.44→0.21）、随 **pair_distance** 强烈降（**距离 1-4 → 0.68；距离 15-41 → 0.11**）——相邻 mask 对的 swap 不兼容远大于远距离对，符合 n-gram 耦合直觉
+  - 注：span 结构 CPI (0.33) ≫ 昨日全序列随机腐蚀 pilot (0.039) 的原因正是 pair_distance 分布不同——协议改 span 结构是对的
+- [x] **正式 pretrained TF OrderGap（results/pretrained/order_gap.json）**：
+  - Q：l2r −61.99 / r2l −61.32 / random×3 ≈ −62.1~−62.2 / **confidence −65.78（最差）**
+  - **OrderGap_raw = 10.24 ± 0.35 nats；per-token = 0.605 ± 0.031 nats/revealed-token；Var_π(Q) = 24.3**；m̄=21.7；峰值显存 2.36GB
+  - 早期观察：pretrained 按自己置信度优先揭示的路径 TF 似然最差——与 Flexibility Trap 叙事方向一致（order choice matters），可作报告观察点，但不作声明
+- [ ] 下一步（协议顺序）：Vanilla pilot（已启动，见下）→ 🔒 协议冻结 → partial-reveal 正式 Vanilla SFT → G0.5 状态支持 → G1/G2 → 阶段 4 止损
+
+---
+
+## 2026-10-01（Day 4 晚）256-seq 管线 + Vanilla smoke + pilot 启动
+
+### 显存调试大工程（重要，勿重踩）
+- [x] **现象**：batch 32×256 训练 forward 峰值 10.32GB 超 8GB → WDDM 换页 → 0.2 steps/s 灾难降速（首跑 smoke 卡 125 步/11 分钟，已 kill）
+- [x] **排查过程**（scripts/profile_mem.py 逐段打点）：SDPA 在 sm_120 上 flash kernel 正常（profiler 实证 `pytorch_flash::flash_fwd_kernel`，非连续视图也走 flash，**注意力矩阵不是元凶**）；真正原因是 **train 模式每 block 保留 ~540MB 激活**（fp32 LayerNorm 输出 + MLP 中间量 + autograd 图）→ 12 blocks ≈ 6.5GB
+- [x] **修复**：model/transformer.py 12 个 block 加 `torch.utils.checkpoint`（train 模式专用；§9.1 dropout=0 使 backward 重算逐位一致，无 RNG 差异；eval/forward 输出不变 → **冻结的 pretrained CPI/OrderGap 基线不受影响**）
+- [x] **修复后 smoke 通过**：300 步 145s（**2.1 steps/s、17k tokens/s**）、峰值 **5.73GB**（reserved 6.49GB，桌面余量充足）、loss 9.86→5.56 下降
+- [x] 训练管线：`task_data/corruption.py`（§7.2 span 腐蚀：span 外恒可见、span 内 1-e^{-σ} partial absorbing）、`training/vanilla.py`（§27 协议字段全记录 + plateau 检测 §3.1 + analysis checkpoint 机制 §3.2 + resume）、`configs/vanilla_256.yaml`（batch 32 eff、dropout 0.0、pilot 参数）、loss reduction 冻结为 mean_over_masked_span（已写入 regime_a_protocol.yaml）
+- [x] **pilot 参数在跑之前已冻结**（§3.1）：N_pilot_max=30000、M=500、K=6、ε=0.5%、α=1.2、pilot_seed=0（protocol/regime_a_protocol.yaml `vanilla_pilot:` 节）
+- [x] **Vanilla pilot 已启动**（后台，30k steps ≈ 4.5h，2.1 steps/s）：exp_local/regime_a/pilot-*，plateau 检测自动算 N = min(30000, ceil(1.2·s_p))
+- [x] `evaluation/eval_task.py` 已写（G1 §9.4：masked NLL/token acc 复用 manifest 协议 + span l2r 贪心解码命中率/精确匹配；支持 HF 或本地 checkpoint 的 EMA 权重）——pilot 完成后先跑 pretrained 基线再跑 pilot checkpoint
+- [ ] pilot 完成后：eval_task（pretrained vs pilot）→ 冻结 N/LR/recipe → 正式 Vanilla SFT（analysis checkpoints 0.1N/0.5N/N）→ G0.5 → G1/G2 → 阶段 4 止损
+
+### Vanilla pilot 首跑发现（calibration 信号，已按 §3.13 调整）
+- [x] pilot 跑到 5000/30000 步时 kill：**eval loss 在 warmup 结束（LR 达 3e-4）后系统性上升**（7.27@500 → 7.17@1500 最低 → 8.01@2500 → 8.20@5000）——过拟合签名：170M 模型 + weight_decay=0 + LR 3e-4 对该任务过激进（§9.2.2 "确定稳定 LR" 正是 pilot 的职责）
+- [x] 已启动 LR 校准探针（后台串行）：3e-5 与 1e-4 各 3500 步（3e-4 探针 = 已终止 pilot 的数据，不必重跑）；选定后重跑 pilot
+- [x] 附带发现：plateau 检测用相对改善 ε=0.5% 对 eval 噪声（±0.5-1%）过严，eval 波动会不断重置 K 窗口 → 30k 步内可能永不触发（pilot 数据验证：1500→2000 变差后又出现 +0.6-0.7% 的噪声改善）。**处理：ε 等 pilot 参数已冻结不动**，但若重跑 pilot 仍不触发则按 §3.1 取 N=N_max=30000（协议已有此分支，不需修订）
+- [x] **LR 校准完成：选定 3e-5**（探针数据：3e-4 发散 ✗；1e-4 warmup 后摇摆 7.30→7.31→7.26；3e-5 warmup 后单调 7.27→7.24→**7.19@3500** ✓）
+- [x] **工作流变更（用户要求）**：>2h 的任务给出命令由用户在 tmux 自己跑，跑完告诉我 run 目录再继续分析
+- [ ] pilot（lr 3e-5, 30k 步）已交用户 → 完成后读曲线/plateau → 冻结 N/LR/recipe → 正式 Vanilla SFT
+
+---
+
+## 2026-10-01（Day 4 深夜）pilot 完成 → 协议冻结 → G1 pilot 检查通过 ✅
+
+- [x] **pilot-150849 完成**（30k 步，2.2 steps/s，6.41GB）：eval 7.55@500 → **7.05@6500 最优** → plateau@8500 → **N = min(30000, ⌈1.2×8500⌉) = 10200**；20000 步后晚段过拟合（+0.3 nats），N=10200 恰好避开
+- [x] **协议已冻结**（protocol/regime_a_protocol.yaml `training_frozen:`）：N=10200、analysis checkpoints [1020, 5100, 10200]、LR=3e-5、warmup 2500、AdamW(0.9,0.999,1e-8)、wd=0、EMA 0.9999、grad_clip 1.0、eff batch 32、dropout 0、span [10,50]、formal seeds [(1,1,1),(2,2,2)]
+- [x] **G1 pilot 检查通过**（eval_task.py，EMA 权重）：NLL 4.281→3.828（−10.6%）、token acc 0.322→0.362、贪心命中 0.443→0.472
+- [x] **踩坑**：EMA state_dict 格式是 `{decay, num_updates, shadow_params: [tensor列表]}` 非按参数名索引——`model.load_state_dict(ema_dict)` 全 key 不匹配静默空载 → 输出层零初始化 → NLL=ln(50257)=10.81 零方差（这个签名=均匀分布）。正确姿势：`ema.load_state_dict(...)` + `ema.copy_to(model.parameters())`（eval_task.py 已修；training/vanilla.py 的 restore 本来就对）
+- [x] 正式 Vanilla SFT ×2 seeds 已交用户在 tmux 跑（~1.5h/seed）
+- [ ] 正式 run 完成后：eval_task/eval_cpi/eval_order_gap 于 3 analysis checkpoints × 2 seeds → G2 兼容性动力学 → G0.5 状态支持 → 阶段 4 止损门
+
+### 正式实验前实现核查（用户要求，已完成 ✅）
+- [x] **核查 ① scheduler**（scripts/check_scheduler.py）：`g['lr'] = lr * min(step/warmup, 1.0)`，warmup 后**位级恒定 3e-5**；n_iters=10200 与 30000 两条 trajectory 共享 step 逐点位级一致，30000 轨迹在 10200 后仍恒定 → **trajectory 与 total_steps 无关**（n_iters 只进训练循环终止条件）
+- [x] **核查 ② EMA**（scripts/check_ema.py）：torch 同款镜像逐位验证 update rule；**存在 decay warmup**（pytorch_ema 标准）：effective_decay = min(0.9999, (1+n)/(10+n))，第 89990 次 update 才达 0.9999 → **本实验全程（10200 步）处于 warmup 区间，effective decay 0.9990→0.99912**；**无 bias correction**；eval/checkpoint 用 shadow（EMA），raw weights 同时保存
+- [x] **G1/G2 评估口径 + Stage-4 gate 判据已预注册**（protocol/regime_a_protocol.yaml `g2_evaluation_pre_registered:` + `stage4_gate_pre_registered:`，看结果前冻结）：primary=EMA 权重 + late checkpoint；paired bootstrap 10k CI；stable=两 seed 同符号且 CI 不含 0；联动=seed 内 sign(CPI_late−CPI_early)==sign(OG_late−OG_early) 且 CI 不含 0；gate 映射 A_HARD_STOP/B_DIAGNOSTIC_ONLY/C_PROCEED；seed 相反→unstable 不加 seed；pilot 30k G1 仅 sanity；24k spike/晚段退化仅审计
+- [x] eval_cpi.py/eval_order_gap.py 已支持本地 checkpoint 的 EMA 加载（与 eval_task 同款；pilot 目录冒烟通过）。**注意 pilot CPI 冒烟显示 SFT 后 CPI 可能下降（4-8 桶 0.357→0.275 等）——预览而已，不得预判 Stage-4，以预注册判据为准**
+- [x] 正式 Vanilla ×2 seeds 命令已交用户（tmux）
+
+---
+
+## 2026-10-02（Day 5 凌晨）正式 Vanilla 2 seeds 完成 → G0.5 PASS → Stage-4 判决 **B_DIAGNOSTIC_ONLY**
+
+- [x] **formal-vanilla-s1-191414 / s2-204215** 完成：各 10201 步、零 NaN、3 analysis checkpoints（raw+EMA 双权重）
+- [x] 训练期 eval 监控器噪声已诊断（交叉评估证明），正式评估用 frozen manifest 固定 σ 网格不受影响
+- [x] **G0.5 PASS**（6/6）：σ 网格在训练支持内（P(σ≤3)=95.1%）、K=0/1 状态可达（P=3.8%/3.9%）、span/pair 规则一致
+- [x] **正式 G1/G2 全指标**：18 项评估（2 seeds × 3 checkpoints × CPI/OG/G1），全部 paired per-sample 落盘
+- [x] **Stage-4 判决（预注册判据，results/vanilla/stage4_gate.json）**：
+  - ΔCPI stable ✅：s1 −0.040 [−0.072,−0.007]，s2 −0.046 [−0.078,−0.014]（SFT 降 CPI ~12-14%，两 seed 同负）
+  - ΔOrderGap stable ✅：s1 −1.49，s2 −1.43（OG 10.24→~8.8，−14%）
+  - **联动 ❌**：early→late 轨迹平坦（CPI_el CI 含 0）→ 判 B_DIAGNOSTIC_ONLY
+  - **关键科学发现**：SFT 的全部效应在头 ~1020 步（warmup 期）内完成，之后平台——"瞬时阶跃"模式使预注册的轨迹联动判据天然不适用；s1/s2 在 OG early→late 符号分歧（噪声内）
+  - 方向与原始 H1 假设（SFT 制造不兼容）**相反**：Vanilla SFT 无正则即减弱不兼容 + 顺序敏感度 → proposal §24 Outcome B 叙事（"什么因素决定 compatibility 方向"）
+- [x] **按预注册规则：不进入 PAPL/Swap 方法路线**（gate 要求 C_PROCEED 才放行）
+- [ ] 下一步选项（待用户定）：① 诊断论文路线（写 Stage-4 报告 + 探索"什么训练因素决定方向"：lr/wd/data 消融）② 若用户与外部 AI 讨论后认为联动判据应修订（如"阶跃+平台"模式的判据），需 protocol revision v4.2 + 说明理由，不可因结果不好看而改
+
+---
+
+## 2026-10-02（Day 5 早）用户裁定 + 三项审计 + protocol v4.2 建立
+
+### 用户裁定（固定，不得偏离）
+- [x] **v4.1 不修改不重新解释；Stage-4 判决 B_DIAGNOSTIC_ONLY 永久固定**
+- [x] 核心现象（固定表述）："Vanilla SFT 在当前 SEDD-small + WikiText103 span-infilling 设置下使 CPI 从 0.328 降到约 0.283–0.289、OrderGap 从 10.24 降到约 8.8，主要变化在第一个 1020-step checkpoint 前已经出现"
+- [x] 叙事口径："potentially novel empirical observation"，不声称普适规律
+- [x] 方法路线（PAPL/Swap 2×2）**降级**：Vanilla 已自行降 CPI，原始动机弱化
+
+### 三项审计（全部确认）
+- [x] **审计 ①**：formal run 实际 optimizer steps = **10201**（循环 `step < n_iters+1` 继承 repo 惯例）；checkpoint 精确在 1020/5100/10200 ✓；偏离 0.01% 记录在案
+- [x] **审计 ②**：EMA effective decay 更正——n=1 时 **0.1818**（此前报告"0.9990→0.99912"错误）；n=50→0.850、n=1020→**0.9913**、n=5100→0.9982、n=10200→0.9991。early ckpt 的 EMA 半衰期 ~70 步（v4.2 密集研究重要）；stage4 报告已修正
+- [x] **审计 ③**：G0.5 分布级检查重做（首版 K 定义混乱 + 只有可达性）——OC: σ=0.81、mask_ratio=0.62、span_len=0.95、pair_distance=0.92、K_revealed=0.75，**PASS**（results/vanilla/g05_state_support_distributional.json）
+
+### protocol v4.2（独立，不动 v4.1）
+- [x] `protocol/experiment_protocol_v4.2.md` + `regime_a_protocol_v4.2.yaml` 已建
+- [x] P1 早期动力学：dense checkpoints [50,100,250,500,750,1020,2500]、seeds (1,1,1)/(2,2,2)、raw+EMA 双权重、同一 frozen manifest、全指标 + buckets；评估分 3 个预注册 Tier（全部执行，顺序只管先后）；变化定位 = 第一个相邻点对 paired Δ CI 不含 0
+- [x] P2 复现：P2a openwebtext（必做，新冻结 manifest）；P2b 任务族（尽力）；P2c 模型规模 stretch（medium 8GB 不可训，替代=自定义 tiny 从零预训练）；判据：ΔCPI CI 不含 0 = 重塑；跨设置符号分歧 = 方向依赖
+- [x] 机制消融/PAPL-Swap 延迟到跨设置复现之后
+- [x] 代码就绪：vanilla.py 循环改为精确 N 步（v4.2 语义）；eval 三脚本加 `--weights raw|ema`
+
+### 文献核查首轮（reports/literature_check.md）
+- [x] **未发现直接测量 vanilla SFT 前后 ΔCPI/ΔOrderGap 的工作**。最密切：① Path-Dependent Denoising（arXiv:2605.09303）的 local curl **就是我们的 δ_swap**（inference-only diagnostics，自述缺实证，Theorem 3: curl 源自 finite capacity/imperfect optimization/calibration 而非数据结构——是我们发现的现成机制假设）② Decoding in Order-Agnostic LMs（2606.00997）在已微调 LLaDA 上的单点快照 ③ Mixing Times（2605.16378）存在性理论 ④ Inconsistencies in MLMs（2301.00068）⑤ Majid AISTATS 2025 定义来源。TRIMS/SAS/DTM 均不测 vanilla SFT 的兼容性副作用
+
+### formal-s1 完成 + 重要诊断（eval 监控器噪声，勿误判）
+- [x] **formal-vanilla-s1-191414 完成**：10201 步/4474s/2.3 steps/s/6.41GB/零 NaN/3 个 analysis checkpoints（各 2.7GB，含 raw+EMA 双权重）✓
+- [x] **异常排查**：s1 训练期 eval 曲线 ~8.6-8.7 vs pilot ~7.1-7.2（差 1.6 nats）。交叉诊断（scripts/cross_eval_check.py，同一 eval 种子下互换模型）证明**是 eval 腐蚀种子噪声而非模型差异**：同一模型换 eval 种子 7.05↔8.67；同一 eval 种子下 **s1-10200 (7.049) 好于 pilot-30000 (7.420)**。根因：训练期 eval 64 块×每块 1 个 t，loglinear 的 dsigma 权重跨 t 变化 3 个数量级（t≈0.5 权重 2 vs t≈0.97 权重 33），(chunk,t) 配对差异主导均值。**正式评估用 frozen manifest 的固定 σ 网格，不受影响**；formal run 里的 plateau 检测仅信息性（N 已冻结）。勿据此改任何东西
+
+---
+
+## 2026-10-02（Day 5 重启后）完整性审计 ✅ + 10201 审计定案 + v4.2 P1 启动准备
+
+- [x] **重启后完整性审计全部通过**：Stage-4 快照 SHA 24/24 + pilot 快照 11/11；23 个 canonical 结果文件与登记 hash 逐一 MATCH；manifest 500 行、hash `1897bd14...` 与冻结记录一致（未重新生成）；18/18 评估 JSON 全部 parse；8/8 formal checkpoint torch.load 成功（内部 step 精确 1020/5100/10200）；关键数值全一致；verdict 仍为 **B_DIAGNOSTIC_ONLY（永久固定，不允许用后续分析回头改）**。无缺失、无截断、无重启损坏
+- [x] **10201 审计定案**（`reports/audit_optimizer_step_count_10201.md`）：v4.1 循环条件 `step < n_iters+1`（继承 run_train.py:145 惯例）→ **真实发生了 10201 次 optimizer.step()，不是 logging 假象**；但计数器 1-based，`checkpoint_{k}` = 恰好 k 次 update 后的状态 → 1020/5100/10200 全部精确，第 10201 次 update 从未落盘；仅 metadata 计数多算 1 步（0.01%）。**不重跑、不修改 v4.1**
+- [x] v4.2 P1 代码就绪：`training/vanilla.py` 精确 N 步循环（`step < n_iters`）+ metadata `loop_semantics: exact_N` + PROTOCOL_VERSION=v4.2；eval 三脚本 protocol_version=v4.2（eval 配置仍读 v4.1 yaml 的 frozen manifest 指向，manifest 本身不变）；`scripts/run_p1_evals.sh`（Tier1 EMA-CPI → Tier2 EMA-OG/G1 → Tier3 raw 全指标；输出 `results/p1_dense/` 独立目录不碰 v4.1；两条只读预检：manifest hash 不变 + **P1 checkpoint_1020 与 v4.1 formal 同 seed 逐字节一致 = 训练复现性门**）
+- [x] **P1 preflight audit**（`reports/p1_preflight_audit.md`）：scheduler 一致性通过——`losses.py:67` closed-form `g['lr']=lr*min(step/warmup,1)` 无 n_iters 项；2500 vs 10200 逐 step 位级 0 差异；v4.1 formal 日志 101+101 点与 closed-form 对拍全一致；check_scheduler 回归过。**措辞更正：warmup 内 LR 线性爬坡（step 1 = 1.2e-8），step≥2500 才恒定 3e-5**
+- [x] gate 2 升级为两级（run_p1_evals.sh + `scripts/compare_checkpoints.py`）：先 `cmp` 逐字节；不一致则 tensor-level diff（model/EMA/optimizer/scaler；RNG 未序列化 → 权重一致即隐含 corruption 流一致），max rel < 1e-5 = kernel 噪声 PASS-CAVEAT，≥1e-5 或结构不一致 = 硬停
+- [ ] P1 训练 2 seeds（n_iters=2500 精确步、save_at=[50,100,250,500,750,1020,2500]、seeds (1,1,1)/(2,2,2)、lr=3e-5，~18min/seed）已交用户 tmux → 完成后跑 run_p1_evals.sh（总 ~23h GPU）
+
+---
+
+## 2026-10-01（Day 4 早）研究项目开工：阶段 0 + 阶段 1 完成 ✅（旧协议版，已被上面 v4.1 版取代）
+
+### G0 正确性门（`test_cpi.py`，9/9 CPU 单元测试过）
+- [x] 条件概率提取公式（RADD 桥）：absorbing 下 mask 位置 `score[v] = log r(t) + log p̂(v|C)`（从 Absorbing.score_entropy 最优解 exp(score)=ratio·p 推出）→ `p̂ = softmax(score[i,:D-1])`，时间标量 r(t)=1/(e^σ−1) 是加性常数、softmax 中消掉；MASK 条目必须排除（transformer.py:288 scatter 会把 score[i,MASK] 置 0，不是有效 logit）
+- [x] 玩具测试：兼容联合分布 → δ_swap=0 精确；故意不兼容 → ln(3.2) 手算值；batch 化=逐样本；对抗性 MASK logit=1e9 保证排除逻辑真被测试
+- [x] 严格逐 token 解码记账（CPU）：每步 mask 数 -1、可见位置不动、路径 logp 正确、4 顺序位置选择正确、categorical 采样落在干净词表
+
+### 阶段 1：Data CPI 评估器 + pretrained 基线（已冻结）
+- [x] `cpi_eval.py`（提取 + delta_swap 3-forward + 严格解码器 + 批量评估 + 分桶汇总）、`run_cpi_baseline.py`（协议：t~U[eps,1]→σ→腐蚀→无放回采样 (i,j) 对；样本冻结到 `results/cpi_samples_pretrained.pt`，后续 checkpoint 一律 `--load_samples` 复用做 paired 对比）
+- [x] **冻结数字（N=998，seed=0）：CPI = 0.0393 ± 0.0038；δ 均值 +0.0044 ± 0.0040（≈0，模型基本无偏）；local CE = 3.469 ± 0.052**
+- [x] 早期观察：CPI 随 σ 单调升（0.019→0.067，4 桶）也随 mask 数单调升（0.019→0.066）——mask 越多上下文越少、条件越噪声，方向符合直觉（报告可用，但样本少不作声明）
+- [x] 踩坑记录：① `graph.sample_transition(x0, sigma[None,None])` sigma 变 3D 会把 x_t 广播成 [1,1,L]（正确是 `sigma[:,None]`，eval_ppl.py 同款）② 3 个状态的 logits+logp 同活 → 峰值 8.13GB 超上限（WDDM 危险区）→ 改为用完即 del，降到 **3.20GB** ③ `torch.randperm` 不接受 cuda generator 且走全局 CPU RNG → main 里必须 `torch.manual_seed` ④ strict decode 里 `torch.zeros(B)` 默认 fp32 把 fp64 logp 降精度（dtype 跟随 logp 修复）
+- [ ] 阶段 2：GPU smoke 严格解码（真实模型 + infilling 提示）→ 4 顺序 × ~100 样本测 OrderGap + Rollout CPI
 
 ---
 
@@ -96,3 +240,17 @@
 - [ ] Day 6: SFT 测试集评估（perplexity + 生成样本质量）
 - [ ] Day 7+: RL 路线调研（DDPO / Discrete Diffusion Reward Guidance / SEDD-RLHF），设计并实现一个最小 RL 训练循环
 - [ ] 前沿论文调研：D3PM、MDLM、SEDD-RLHF 等（见笔记）
+
+---
+
+## 2026-10-02（Day 5 深夜）P1 启动 → C: 爆满崩溃 → 迁移 D: → 恢复审计 ✅
+
+- [x] P1 s1/s2 在 tmux 启动：s1 (1,1,1) **完成**（2500 精确步、7 dense ckpt + meta 全落盘、零错误）；s2 (2,2,2) 在 **step 100** 处 C: 盘满硬崩溃——checkpoint_100.pth 截断 324MB/2.71GB（CORRUPT），无 checkpoints-meta → 无法 resume
+- [x] 恢复审计（只读，全通过）：s1 8/8 ckpt torch.load + 内部 step 与文件名一致 + 全张量 finite PASS；s2 checkpoint_50 PASS；**Gate 2 s1 逐字节 PASS**（P1 s1 checkpoint_1020 == formal-s1 checkpoint_1020，位级复现 → recipe 完全确定）；manifest SHA 1897bd14… 不变；v4.1 注册哈希 24/24 + pilot 11/11 全 MATCH；崩溃后项目内零文件变动
+- [x] WSL 已迁 D:：`D:\WSL\Ubuntu-24.04\ext4.vhdx`（87.2GB）；C: 87.3G free / D: 34.8G free；vhdx 真实余量 = D: 余量；HF/datasets cache 已随迁移在 D: 上，无需重定向；无 Docker
+- [x] 保存逻辑确认：torch.save 直接写最终路径（无 .tmp/无 atomic）→ 无瞬时双倍空间；每 seed 8 个完整 ckpt = 21.7GB
+- [x] s2 已按用户指令隔离+重跑完成（`p1-s2-110355`，2500 精确步/1138s，8/8 ckpt 完整性 PASS，step 1 loss 与崩溃前逐位一致）；**Gate 2 s2 逐字节 PASS**（checkpoint_1020 == formal-s2）→ P1 训练阶段两个 seed 全部完成，位级复现证据 2/2
+- [x] smoke 垃圾已清（用户授权）：vanilla256-* 4 目录 + exp_local/wikitext103（Day-3 smoke），回收 ~13GB（WSL 用量 82G→69G）
+- [x] **P1 评估完成（84/84，~4h，远快于预注册的 23h 保守估计）**：Gate 1 manifest hash PASS + Gate 2 两 seed checkpoint_1020 逐字节 PASS；84 JSON 全部 parse、per-sample 全 N=500
+- [x] **P1 判读完成**（reports/p1_early_dynamics_analysis.md，§3.3 预注册口径）：CPI 变化定位 s1=(250,500) / s2=(500,750)（EMA，同窗口方向一致）→ **连续衰减非瞬时阶跃**，0→250 平台、250→1020 下降、1020→2500 平台；OrderGap 更早启动（0→50 已显著）且 s2 持续到 2500；signed δ 全程 ≈0（对称收缩非方向偏置）；pair-distance 下降由 d[1,4] 主导、σ=3 桶主导
+- [ ] P2a 前必须先解决长期存储（D: 现剩 ~19GB，openwebtext 数据集 15-40GB 放不下；可选 Optimize-VHD 回收 ~10G slack / 清 lrprobe+pilot-132632 ~7.8G / vhdx 迁 E:/F:）

@@ -1,0 +1,17 @@
+{
+  "tag": "pilot",
+  "model_path": "exp_local/regime_a/pilot-150849",
+  "source": "local-ema (exp_local/regime_a/pilot-150849)",
+  "step": 30000,
+  "protocol_version": "v4.1",
+  "manifest_file": "manifests/regime_a_eval_v1.jsonl",
+  "manifest_sha256": "1897bd14bf92e61b2664a4950a3b60f14e09ac0d454d58d22e88815207f263d3",
+  "git_commit": "84dc4b45c2ce6e43b10424ff0fc4cd83582c2e68",
+  "masked_nll": 3.828125,
+  "masked_nll_sem": 0.07861176483397697,
+  "token_acc": 0.36189961433410645,
+  "token_acc_sem": 0.010172252333517666,
+  "greedy_per_pos_hit_rate": 0.4717259489683322,
+  "greedy_span_exact_match": 0.01,
+  "n_greedy": 100
+}

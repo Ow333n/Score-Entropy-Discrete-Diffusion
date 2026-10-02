@@ -1,0 +1,17 @@
+{
+  "tag": "p1-s1-500-raw",
+  "model_path": "exp_local/regime_a/p1-s1-020240",
+  "source": "local-raw (exp_local/regime_a/p1-s1-020240)",
+  "step": 500,
+  "protocol_version": "v4.2",
+  "manifest_file": "manifests/regime_a_eval_v1.jsonl",
+  "manifest_sha256": "1897bd14bf92e61b2664a4950a3b60f14e09ac0d454d58d22e88815207f263d3",
+  "git_commit": "84dc4b45c2ce6e43b10424ff0fc4cd83582c2e68",
+  "masked_nll": 4.09375,
+  "masked_nll_sem": 0.07965992169843,
+  "token_acc": 0.33556610345840454,
+  "token_acc_sem": 0.010040032538723419,
+  "greedy_per_pos_hit_rate": 0.4589218041511694,
+  "greedy_span_exact_match": 0.02,
+  "n_greedy": 100
+}

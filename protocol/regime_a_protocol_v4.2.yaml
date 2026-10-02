@@ -1,0 +1,50 @@
+# Regime A v4.2 冻结配置 (P1 早期动力学; 规则见 experiment_protocol_v4.2.md)
+protocol_version: v4.2
+phenomenon_fixed_from_v4_1: >-
+  Vanilla SFT (SEDD-small, WikiText103 span-infilling) 使 CPI 0.328 -> 0.283-0.289,
+  OrderGap 10.24 -> ~8.8, 主要变化在 step 1020 前完成。v4.1 判决 B_DIAGNOSTIC_ONLY 永久固定。
+
+p1_dense_dynamics:
+  model_path: louaaron/sedd-small          # 同一 pretrained checkpoint
+  recipe: v4.1 training_frozen 同款        # LR 3e-5 / warmup 2500 / eff batch 32 / dropout 0 / wd 0
+  n_iters: 2500                            # v4.2 语义: 精确 2500 个 optimizer steps (loop 已修)
+  loop_semantics: exact_N                  # 修复 v4.1 的 n_iters+1 偏离 (审计 ①)
+  seeds: [[1, 1, 1], [2, 2, 2]]            # 复用 v4.1 formal seeds
+  dense_checkpoints: [50, 100, 250, 500, 750, 1020, 2500]   # step 0 = pretrained 已有
+  weights_evaluated: [raw, ema]            # 两者都评, 分开报告
+  eval_manifest: manifests/regime_a_eval_v1.jsonl   # 同一 frozen manifest (SHA-256 不变)
+
+  metrics_per_checkpoint:
+    - cpi_abs
+    - cpi_rms
+    - delta_signed_mean
+    - cpi_buckets: [pair_distance, sigma, span_length]
+    - ordergap_raw                         # 固定 6 路径口径
+    - ordergap_per_token
+    - masked_nll
+    - token_accuracy
+    - span_greedy_hit
+
+  eval_tiers_pre_registered:               # 全部预注册全部执行, 顺序只控制先后
+    tier1: "ema 权重 x 全 dense 点 x 2 seeds: CPI 全指标 + buckets"
+    tier2: "ema 权重 x 全 dense 点 x 2 seeds: TF OrderGap + G1"
+    tier3: "raw 权重 x 全 dense 点 x 2 seeds: CPI + TF OrderGap + G1"
+
+  p1_reading_pre_registered:
+    change_localization: "第一个相邻点对的 paired Δ bootstrap 95% CI 不含 0 的位置"
+    seed_disagreement: "unstable, 不加 seed"
+    no_continuous_vs_step_presumption: true
+
+p2_reproduction:
+  p2a_required: "openwebtext span-infilling (同任务结构不同数据分布), N=10200,
+                 analysis checkpoints [1020,5100,10200], seeds (1,1,1)/(2,2,2),
+                 新冻结 manifest: manifests/regime_a_openwebtext_eval_v1.jsonl"
+  p2b_task_variation: "尽力做 (候选 code infilling / synthetic); 不做需记录理由"
+  p2c_scale_stretch: "medium 8GB 不可训练 (静态 8.4GB); 替代: 自定义 tiny 模型从零预训练后重复;
+                      P2a 完成后决定并预注册"
+  p2_reading:
+    reshaping: "该设置 ΔCPI paired CI 不含 0 (任意方向)"
+    direction_dependence: "跨设置 CI 均不含 0 且符号不同"
+
+deferred_until_cross_setting_replication: [机制消融, PAPL-Swap-2x2]
+narrative: "potentially novel empirical observation"   # 不声称普适规律
