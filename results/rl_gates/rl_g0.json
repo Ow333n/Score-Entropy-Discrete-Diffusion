@@ -1,0 +1,46 @@
+{
+  "loader": {
+    "step": 10200,
+    "ema_decay": 0.9999,
+    "ema_num_updates": 10200,
+    "n_shadow": 130,
+    "n_model_params": 130,
+    "shadow_vs_model_mismatches": 0,
+    "raw_step": 10200
+  },
+  "eval_cpi.py": {
+    "max_abs_diff": 0.0,
+    "diffs": {
+      "cpi_abs": 0.0,
+      "cpi_abs_sem": 0.0,
+      "cpi_rms": 0.0,
+      "delta_mean": 0.0,
+      "delta_sem": 0.0,
+      "delta_median": 0.0,
+      "delta_sd": 0.0,
+      "local_ce": 0.0,
+      "token_acc": 0.0,
+      "n_samples": 0
+    }
+  },
+  "eval_task.py": {
+    "max_abs_diff": 0.0,
+    "diffs": {
+      "masked_nll": 0.0,
+      "token_acc": 0.0,
+      "greedy_per_pos_hit_rate": 0.0,
+      "greedy_span_exact_match": 0.0
+    }
+  },
+  "eval_order_gap.py": {
+    "max_abs_diff": 0.0,
+    "diffs": {
+      "order_gap_raw": 0.0,
+      "order_gap_raw_sem": 0.0,
+      "order_gap_per_token": 0.0,
+      "var_pi_mean": 0.0,
+      "mean_m": 0.0
+    }
+  },
+  "verdict": "RL-G0 PASS"
+}
