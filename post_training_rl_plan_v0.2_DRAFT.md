@@ -20,8 +20,7 @@ compatibility 会继续衰减、保持、还是反弹？这决定 post-training 
 - Vanilla SFT（SEDD-small、WikiText103 span-infilling、2 seeds）使 CPI_abs 0.3281→0.283–0.289（−12~14%）、OrderGap_raw 10.24→~8.8（−14%），paired bootstrap CI 不含 0。
 - Stage-4 判决 **B_DIAGNOSTIC_ONLY（永久固定）**。
 - P1（CPI）：衰减定位在 250–750 窗口（s1=(250,500)、s2=(500,750)，EMA 口径），0→250 平台、1020→2500 平台；signed δ 全程 ≈0（对称收缩）。
-- P1（OrderGap）：**CPI 与 OrderGap 的早期动力学不完全同步**——OrderGap 在 0→50 已出现小幅显著变化（≈−0.03 nats，四口径一致，方向为下降；P1 报告 paired Δ 表以 pretrained−ckpt 记为正号 +0.03，注意该正号表示下降），而 CPI 在 0→250 完全平台；OrderGap 随后 100→1020 连续大幅下降，s2 在 1020→2500 仍显著下降而 CPI 已平台。
-  > ⚠️ external review 曾表述为 "small initial increase before later decline"；P1 数据方向为 **decrease**（10.24→10.22）。v0.2 按数据写，若 review 持有不同数据请提供（frozen 数据禁止改写）。
+- P1（OrderGap）：**OrderGap 在 step 50 已出现一个小幅但可检测的下降（10.244→10.216，Δ≈−0.03 nats，paired CI [−0.052,−0.007]），而 CPI 在此阶段仍基本处于平台 → CPI 与 OrderGap 的早期动力学并不同步**。不表述为 "attenuation strongly starts at step 50"（effect size 小）。OrderGap 随后 100→1020 连续大幅下降，s2 在 1020→2500 仍显著下降而 CPI 已平台。（external review 已确认其此前 "initial increase" 表述有误；frozen 数据口径不变。）
 - 措辞纪律：attenuation temporally overlaps with later warmup/rising LR —— **不声称 LR 因果**。
 
 ## 3. Why RL Is Introduced Now
@@ -97,9 +96,10 @@ P2a（openwebtext 复现）/ P2b（任务族）/ P2c（规模）设计见 protoc
 
 - model 输出 **log-score**（[B,L,50258]，x_t 位置 logit 恒 0）；一切概率从 exp(score) 构造。
 - policy 是 **per-position categorical**。给定 x_t，每个位置在 D=50258 个状态上有一个转移权重向量 w_θ(x_t, σ)：
-  - **analytic predictor 口径（候选 A，推荐）**：`w = staggered_score(score, dσ) × transp_transition(x_t, dσ)`
+  - **primary RL-policy = analytic predictor（v0.2 审查定案）**：`w = staggered_score(score, dσ) × transp_transition(x_t, dσ)`
     （元素乘，见 reverse-transition 分析 §4.2；staggered_score 内部含 exp(dσ) 缩放与 MASK 列补偿）。
-  - Euler/τ-leaping 口径（候选 B）：`w_v = dt·dσ·exp(score_v)`（v≠x_t）、`w_keep = 1 − Σ_v w_v` —— 见 §14.1 资格限制。
+  - **Euler/τ-leaping 降级为 inference / debug baseline**：除非 Euler 单独通过 §14.1 的权重有效性 /
+    非负性 / normalization / sampler-frequency matching 全套检查，否则不作为 primary RL policy。
 - **policy 分布与 rollout sampler 完全同源**（同一 w 向量）：
   ```
   π_θ(v | s) = w_v / Σ_u w_u            （正规化 categorical）
@@ -149,8 +149,10 @@ Rollout（no_grad、eval 模式）**预先采样 timestep J**，只缓存训练�
   计入会稀释信号。
 - **Group 同源约束**：同一 prompt 的 G 条 rollouts 必须共享 clean sample / span / σ / initial mask
   （同一次 `corrupt_span_batch` 产物），只改变 rollout RNG（采样随机性）。
-- 退化情形预注册：|M0| = 0 的 prompt 排除并重采样（record 计数）；|M0| ≥ 1 即有效，pilot 阶段
-  统计 |M0| 分布并在正式协议中定下限。
+- 退化情形定案（v0.2 审查）：**只有 |M0| = 0 时重采样**（record 计数）；不设 |M0| ≥ 4/8 之类的人为门槛
+  （会改变原始 corruption / training support）。zero-variance group（r 全同 → A 全 0）自然不产生
+  policy update，属合理行为，不强制重采样。logging 要求：|M0| 分布、zero-variance group fraction、
+  reward variance vs |M0|、mean reward vs |M0|。
 - R ∈ [0,1]，长度归一，无需 reward model。secondary 指标（exact-match / edit distance / semantic）仅记录。
 
 ## 19. Reward Limitations
@@ -214,6 +216,9 @@ R = −CPI / −OrderGap / −|δ| 一律禁止（含 hidden regularizer 形式�
 - **unbiasedness 声明范围（严格限定）**：仅对 **unclipped、on-policy 的 timestep-MC estimator** 声明
   （q 覆盖 target 支撑时它是 g(θ) 的 IS 估计）。**不对 clipped / group-relative / off-policy replay
   的完整算法做 unbiased 声明**。
+- **K=1 正式定案（v0.2 审查）**：每条 trajectory 每次 update 只随机抽 1 个 reverse timestep。
+  仅当出现下列情形之一才考虑增加 K：gradient estimator variance 明显过高 / reward 完全无法学习 /
+  K=1 与 larger-K toy estimator 偏差异常 / correctness test 表明 K=1 不稳定。
 - Pilot：K=1、uniform、不含最终 denoiser 步（denoiser 的分布口径单独审计后再议）。消融候选：
   noise-weighted q、K=2/4、含 denoiser 步（需 protocol 修订）。
 
@@ -235,8 +240,10 @@ R = −CPI / −OrderGap / −|δ| 一律禁止（含 hidden regularizer 形式�
 
 ## 27. Optimizer Strategy
 
-Fresh AdamW（β=(0.9,0.999), eps=1e-8, wd=0），grad_clip=1.0，warmup 暂定 0（从 SFT 已训权重起步，
-RL 阶段是否需要 warmup 在 LR pilot 中观察决定）。scaler 沿用 amp。
+Fresh AdamW（β=(0.9,0.999), eps=1e-8, wd=0），grad_clip=1.0，**constant LR from step 1（无 warmup，
+v0.2 审查定案）**：P1 已显示 step/data exposure/optimizer state/LR warmup 共同变化使早期动力学无法
+归因；RL 再用 warmup 会重蹈 confound。除非 LR probe 明确证明 constant LR 无法稳定训练，否则不加 warmup。
+scaler 沿用 amp。
 
 ## 28. LR Pilot
 
@@ -368,16 +375,19 @@ CPI/OrderGap/task 指标图。Gradio 后置，先保证科学正确。
 - 协议版本号：本 DRAFT → 审查 → `post_training_rl_protocol_v1.0_FROZEN.md`（freeze 后任何改动递增
   版本并重跑受影响部分，纪律同 v4.2 §7）。
 
-## 45. Implementation Roadmap
+## 45. Implementation Roadmap（v0.2 审查定案顺序，严格按序）
 
-1. 存储：清 junk / compact / 迁盘（先决，§43）。
-2. `rl/transition.py`（§14 的 w/logπ/validity gate）+ 单测 1–21（CPU 可跑）。
-3. RL-G0（EMA-10200 加载对拍）。
-4. `rl/rollout.py` + `rl/reward.py`（§17/§18，小批量 smoke）。
-5. `training/rl.py`：RL-1 joint PG（§21）→ RL-2 group-relative（§22）→ RL-3 per-position PPO（§24/§26）。
-6. LR probe（1e-6/3e-6/1e-5，各 ~100-200 步）。
-7. RL pilot（评估点 0/50/100/250/500）→ 全评估（task + compatibility）。
-8. 判读（§40 矩阵）→ 决定 formal horizon / seed2 / P2。
+- **A.** 解决磁盘问题：free disk ≥ 30GB（hard blocker，§43）。
+- **B.** 实现 `rl/transition.py`（§14 的 w / π / logπ / validity gate）。
+- **C.** 实现并通过全部 22 项 RL correctness unit tests（§34，含 sampler factorization test）。
+- **D.** analytic 128-step vs 1024-step gate（不训练：同一 SFT s1 EMA-10200、固定 eval subset，
+  比较 M0 重建 acc / 残存 MASK 率 / NLL / reward 分布 / runtime / invalid-state 频率）。
+- **E.** RL-G0：RL init 严格复现 SFT checkpoint（tensor/state_dict/inference/G1/CPI/OrderGap）。
+- **F.** tiny RL-1 REINFORCE smoke（reward 是否可学习、gradient 是否正常、model 是否稳定）。
+- **G.** LR probe：1e-6 / 3e-6 / 1e-5（选择标准仅 §28 的稳定性指标，**禁止按 CPI/OrderGap 美观度选 LR**）。
+- **H.** 返回 review：correctness results、128-vs-1024 gate、RL-G0、RL-1 smoke logs、LR probe。
+- **I.** 全部通过后 freeze `post_training_rl_plan_v1.0_FROZEN.md`。
+- **J.** 最后才启动 500-step formal RL pilot。
 
 ## 46. Open Questions（freeze 前必须定案）
 
