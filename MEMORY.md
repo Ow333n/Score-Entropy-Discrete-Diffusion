@@ -261,7 +261,8 @@
 - [x] ⚠️ external review 的 P1 OrderGap "0→50 initial increase" 表述与 frozen 数据方向相反（数据为 −0.03 nats 下降），v0.2 §2 按数据写并 flag（§46.10 待与 review 确认）
 - [x] **review 第二轮定案已入 v0.2**：analytic=primary policy（Euler 降级 debug baseline）、K=1、|M0|=0 才重采样、constant LR（无 warmup，避免 confound）、执行顺序 A-J 写入 §45
 - [x] **rl/transition.py + rl/reward.py + 22 项单测已实现**（2ba3210）：policy=w/Σw 同源、validity gate、mean-centered advantage、PPO min 形式、M0 reward；单测已过 7 项（含 K=1 MC toy 解析对拍——期间修了我 toy 的 inverse-CDF 反号 bug 与 0.5 链式因子遗漏）
-- [ ] **⚠️ 重要发现（blocker）**：staggered_score 在 score[MASK]=0（forward scatter）下 MASK 列权重 = (1−e^{dσ})·Σscore **恒为负**（任何 dσ>0）→ analytic 采样器 stay 权重为负、gumbel-argmax 下 stay 几乎不被选中；真实 rollout 的负权重规模待 GPU 探针量化（/tmp/analytic_weights_probe.py，batch 16→4 修 OOM；用户玩游戏占 GPU，暂停）。test_pg_grad_finite/test_stay_action_has_grad 在 toy 上按预期失败（gate 检测到负权重）。若实测证实负权重，policy 口径需修订（候选：exact reverse-transition 闭式分布 或 修正 stagger 的 MASK 列），回 review
+- [x] **负权重疑云已澄清（非 blocker）**：采样路径 score[MASK] = exp(0) = **1**（scatter 置 0 后过 exp，非 0）→ stag_MASK = e^{dσ} + (1−e^{dσ})·Σscore；完整 analytic rollout 实测（真实 σ,dσ 匹配网格、SFT s1 EMA-10200、128 步）：**全程零负权重、validity 全 PASS**，stay 频率 ~0.99→末步 0.17。理论负值条件 Σscore > e^{dσ}/(e^{dσ}−1) 在真实轨迹不满足（Σscore ≈ 1/(e^σ−1)）。此前"恒为负"结论错误已修正；gate 保留防御语义（测试 test_validity_gate_rejects_negative_stag）
+- [x] **24 个 RL 单测全过**（含 sampler factorization、frequency 对拍、K=1 MC 解析对拍、PPO clip 手算、M0 reward、G 共享腐蚀）
 - [ ] 待用户 GPU 空闲后：跑探针 → 定 policy 口径 → 修单测 → 128vs1024 gate → RL-G0 → RL-1 smoke → LR probe
 
 - [ ] P2a 前必须先解决长期存储（D: 现剩 ~19GB，openwebtext 数据集 15-40GB 放不下；可选 Optimize-VHD 回收 ~10G slack / 清 lrprobe+pilot-132632 ~7.8G / vhdx 迁 E:/F:）
