@@ -121,6 +121,7 @@ def main():
         sig0 = sig0_pool[idx].repeat_interleave(cfg.rl.g)
         m0 = m0_pool[idx].repeat_interleave(cfg.rl.g, dim=0)
         model.eval()
+        torch.cuda.empty_cache()          # WDDM 8GB 碎片敏感: 训练图释放后清缓存再 rollout
         trajs = []
         with torch.no_grad():
             for lo in range(0, x0.shape[0], cfg.rl.chunk):
@@ -173,6 +174,8 @@ def main():
             ema.update(model.parameters())
         else:
             gnorm = 0.0
+        del trajs
+        torch.cuda.empty_cache()
 
         if step % 10 == 0 or step == 1:
             el = time.time() - t0

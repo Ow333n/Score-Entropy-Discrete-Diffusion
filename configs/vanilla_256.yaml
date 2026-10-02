@@ -68,7 +68,7 @@ rl:
   prompts_per_step: 4
   pool: 64
   rollout_steps: 128
-  chunk: 4
+  chunk: 2
   seed: 0
   manifest: manifests/regime_a_eval_v1.jsonl
   init_dir: exp_local/regime_a/formal-vanilla-s1-191414

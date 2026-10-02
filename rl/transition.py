@@ -44,8 +44,21 @@ def transition_weights(graph, x_t, score, dsigma):
     dsigma: [B] 或 [B, 1]
     """
     stag = staggered_score_fn(score, dsigma)            # p_{σ−dσ}/p_σ 近似 (backward-safe)
-    trans = graph.transp_transition(x_t, dsigma)        # exact forward transition 行
+    trans = _transp_transition_f32(graph, x_t, dsigma)  # exact forward transition 行 (float32 one_hot, 显存减半)
     return stag * trans
+
+
+def _transp_transition_f32(graph, i, sigma):
+    """graph.transp_transition 的 float32 等价 (数值一致, one_hot int64 → float32 显存减半)。
+
+    Absorbing 语义: 非 MASK 行 = e^{−σ}·one_hot(i); MASK 行 = 干净列 (1−e^{−σ}), MASK 列 1。
+    """
+    import torch.nn.functional as F
+    from graph_lib import unsqueeze_as
+    sigma = unsqueeze_as(sigma, i[..., None])
+    edge = (-sigma).exp() * F.one_hot(i, num_classes=graph.dim).float()
+    edge += torch.where(i == graph.dim - 1, 1 - (-sigma).squeeze(-1).exp(), 0)[..., None]
+    return edge
 
 
 def policy_log_probs(w):
