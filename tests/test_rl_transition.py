@@ -176,6 +176,15 @@ def test_validity_gate_negative_tolerance():
     ok, stats = T.validity_check(w)
     assert not ok
 
+# --- backward-safe staggered_score_fn 与原版数值一致 (no_grad) ---
+def test_staggered_fn_matches_graph():
+    graph = _graph()
+    s = _toy_score(B=2, L=5, seed=11)
+    dsigma = torch.full((2, 1), DSIGMA)
+    a = T.staggered_score_fn(s, dsigma)
+    b = graph.staggered_score(s.clone(), dsigma)
+    assert torch.allclose(a.float(), b.float(), atol=1e-2), (a, b)
+
 # --- §34.15b: staggered 负值条件 → gate 拒绝 (防御语义保留) ---
 def test_validity_gate_rejects_negative_stag():
     graph = _graph()
@@ -196,9 +205,9 @@ def test_nonmask_logpi_zero():
     logpi = T.policy_log_probs(w)
     for pos in range(2):
         tok = x_t[0, pos].item()
-        assert logpi[0, pos, tok].item() == 0.0
+        assert abs(logpi[0, pos, tok].item()) < 1e-6     # π=1 → logπ=0
         other = logpi[0, pos, [j for j in range(D) if j != tok]]
-        assert (other == -math.inf).all()
+        assert (other <= -50).all()                      # π=0 → logπ≈−87 (数值 −inf 代表)
 
 # --- §34.17: MASK→MASK stay 动作计入 policy 且对 θ 有梯度 ---
 def test_stay_action_has_grad():

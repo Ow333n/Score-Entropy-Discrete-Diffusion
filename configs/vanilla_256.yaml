@@ -60,6 +60,20 @@ seeds:
   data_order_seed: 0
   corruption_seed: 0
 
+rl:
+  name: rl1-smoke
+  n_steps: 150
+  lr: 3e-6
+  g: 4
+  prompts_per_step: 4
+  pool: 64
+  rollout_steps: 128
+  chunk: 4
+  seed: 0
+  manifest: manifests/regime_a_eval_v1.jsonl
+  init_dir: exp_local/regime_a/formal-vanilla-s1-191414
+  init_ckpt: checkpoint_10200.pth
+
 model_path: louaaron/sedd-small
 load_dir: null
 work_dir: exp_local/regime_a
