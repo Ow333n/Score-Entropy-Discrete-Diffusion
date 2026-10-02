@@ -190,10 +190,10 @@ def main():
             with torch.no_grad():
                 trs = []
                 for lo in range(0, 8, 4):
-                    trs, _gst = rollout_chunk(model, sampling_score_fn, graph, noise,
-                                              x0_pool[eval_idx[lo:lo + 4]], xt0_pool[eval_idx[lo:lo + 4]],
-                                              sig0_pool[eval_idx[lo:lo + 4]], cfg.rl.rollout_steps,
-                                              seed=cfg.rl.seed + 424242 + lo, mask_token=MASK)
+                    trs += rollout_chunk(model, sampling_score_fn, graph, noise,
+                                         x0_pool[eval_idx[lo:lo + 4]], xt0_pool[eval_idx[lo:lo + 4]],
+                                         sig0_pool[eval_idx[lo:lo + 4]], cfg.rl.rollout_steps,
+                                         seed=cfg.rl.seed + 424242 + lo, mask_token=MASK)[0]
                 er = torch.stack([rw.m0_reward(x0_pool[eval_idx[b:b + 1]],
                                                trs[b]["final_x"].unsqueeze(0).to(device),
                                                m0_pool[eval_idx[b:b + 1]])
