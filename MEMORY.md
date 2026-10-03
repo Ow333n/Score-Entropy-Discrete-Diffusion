@@ -266,3 +266,57 @@
 - [ ] 待用户 GPU 空闲后：跑探针 → 定 policy 口径 → 修单测 → 128vs1024 gate → RL-G0 → RL-1 smoke → LR probe
 
 - [ ] P2a 前必须先解决长期存储（D: 现剩 ~19GB，openwebtext 数据集 15-40GB 放不下；可选 Optimize-VHD 回收 ~10G slack / 清 lrprobe+pilot-132632 ~7.8G / vhdx 迁 E:/F:）
+
+## 2026-10-03（Day 6）RL-1 smoke 重启：model-load test FAIL——OOM 异常状态未随 WSL 重启消除
+
+- [x] 状态恢复确认：HEAD 3f88959（memory hardening 已 commit/push）、tag pre-rl-compatibility-v1 在、frozen recipe 确认（config vanilla_256.yaml rl 默认 = smoke 配方：lr 3e-6 constant / G=4 / P=4 / pool=64 / 128 steps / 150 步 / chunk 2 / init=formal-vanilla-s1-191414 checkpoint_10200 EMA）
+- [x] 诊断脚本 `scripts/rl1_model_load_test.py` 新增（复刻 training/rl.py 初始化序列，未 commit）
+- [x] **model-load test FAIL**：模型参数 648.6MB 上卡后，EMA shadow 第一次 clone（148.00 MiB）OOM，allocator 报 6.15GB free；torch OOM 消息 non-PyTorch memory = **17179869184.00 GiB（2^64 回绕）**——与重启前异常同签名（上轮 rl1-smoke-231852 日志仅 2 行即死，同一点）
+- [x] **新证据（dmesg）**：`dxgvmb_send_create_allocation failed ffffffb5` + `dxgkio_create_allocation: Ioctl failed: -75(EOVERFLOW)`，4 条时间戳精确对应本次失败尝试 → 失效在 **dxgkrnl↔Windows WDDM 边界**，Windows 侧 driver 记账状态损坏（`wsl --shutdown` 只重置 Linux 侧）
+- [x] **阈值探针 PASS**：裸进程 648MB(2MB×324) + 148MB 全部成功 → 非容量/VA 阈值，model-load 大量异构分配 pattern 才触发（推测：Windows 侧 per-process allocation 记账溢出，仅推测）
+- [x] 未启动 150-step smoke（按 OOM 规则停止）。候选出路已裁定：**① Windows 重启**（确定重置，已执行见下节）② 单次试 `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True`（减少 create_allocation 次数，重启后 Step 3 情况 A 再做）③ 驱动 591.86 Blackwell+WDDM bug 排查（仅推测，重启后仍 FAIL 才进入）
+
+## 2026-10-03（Day 6 深夜）裁定：方案 A——完整 Windows Restart
+
+- [x] 重启前检查：nvidia-smi 正常（5060 Ti、driver 591.86、632MiB/8GB、无 GPU 进程）；无 python/train 进程；无 tmux 会话 → 无需要保存的运行中状态
+- [x] **方案 A 已执行**：Windows Restart（`shutdown /r`，非 `wsl --shutdown`）。目标：重置 dxgkrnl↔WDDM 边界的 Windows 侧 allocation 记账状态
+- [x] **重启后执行顺序（严格）**：
+  1. [x] Step 1 基础 CUDA 检查：nvidia-smi 正常（5060 Ti、driver 591.86、671MiB/8151MiB、无 GPU 进程）；torch 2.14.1+cu130 CUDA=True、allocated 0.0GB、reserved 0.0GB、free 6.83GB/total 7.96GB
+  2. [x] Step 2 默认 allocator model-load：**PASS**（`MODEL_LOAD_TEST_PASS`）；EMA shadow 完整构建（130 shadow、0 mismatch）、148MB clone 成功、step=10200；post-load allocated=680.4MB reserved=734.0MB free=6581.9MB peak_alloc=1360.2MB peak_reserved=1442.8MB；512MB 测试 PASS；forward smoke finite=True；dmesg 前后均无 dxg EOVERFLOW（基线仅 boot 时 dxgkrnl 注册行）
+  3. [x] Step 3 分支：**情况 A**。expandable_segments:True 全新进程 model-load 也 **PASS**（无 unsupported/ignored warning）：post-load allocated=678.8MB reserved=696.3MB free=6619.7MB peak_alloc=1357.0MB peak_reserved=1367.3MB → torch 2.14 支持，reserved 略低于默认 allocator
+  4. [x] Step 4 正式 RL-1 smoke 条件 ①—⑤ 全部满足 → 等用户 go-ahead 后从 **step 0** 重跑 150-step RL-1 smoke（不 resume 之前中断 run）；expandable_segments 若启用只记为 allocator 工程设置（入 metadata，非 algorithm change）
+- [ ] **scientific recipe 不变**：SFT seed1 EMA checkpoint_10200 init / analytic predictor / 128 reverse steps / G=4 / K=1 / pure on-policy REINFORCE / group mean-centered advantage / M0-only reconstruction reward / constant LR / 当前 sigma-safe PG rule / 150 steps；内存工程优化保留（f32 one_hot、chunk=2、cleanup fixes）；expandable_segments 只算 allocator 工程设置，必须记入 metadata，不描述为 algorithm change
+- [ ] **新 clean run 若再 OOM**：第一次 OOM 立即停止，不自动重启；保存 optimizer step / rollout|recompute|backward|eval 阶段 / requested / allocated / reserved / max allocated / max reserved / mem_get_info / nvidia-smi / dmesg dxg lines / |M0| / rollout index / timestep J / sigma 后回报
+
+## 2026-10-03（凌晨，重启后）RL-1 smoke clean run：rl1-smoke-022319（进行中）
+
+- [x] 用户 go-ahead 后启动：tmux `rl1-smoke` / PID 1875 / work_dir `exp_local/regime_a/rl1-smoke-022319` / HEAD 3f88959 / `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True`；allocator 设置已写入 work_dir 的 `allocator_config.json`（分类：memory/allocator engineering configuration，明确 not algorithmic change / not scientific intervention）；从 step 0 全新跑、无 resume；recipe 全部来自 config 默认（lr 3e-6/G=4/P=4/pool=64/128 步/chunk 2/init=formal-vanilla-s1-191414 checkpoint_10200 EMA/analytic/K=1/σ-gate 0.05）
+- [x] **step 1 全链路 PASS**（rollout→recompute→backward→optimizer）：reward=0.1290±0.1061、zvg=0/4、grad_norm=0.53、loss=0.0631、0.041 steps/s（≈24.4 s/step → 150 步预计 ~65-75min + 3 次 eval）、script vram(max_alloc)=4.29GB、nvidia-smi 5345MiB used/2547MiB free、dmesg 0 条 dxg 错误
+- [x] **150 步全部跑完，零 OOM，dxg_errors=0**（3456s ≈ 57.6min，0.043 steps/s ≈ 23 s/step）：
+  - reward：无趋势、在噪声内震荡（logged mean 0.211，首 6 点 0.222 vs 末 5 点 0.226，final 0.183±0.264；per-step std 0.06–0.26）
+  - fixed eval：eval8_reward 0.1883→0.1837→0.1837 平；eval_loss(EMA) 7.0186→7.0130→7.0171（无 NLL 退化）
+  - grad_norm：0.06–1.87（clip 1.0），均值 ~0.66，无发散；3/16 点触 clip
+  - zvg（zero-variance group fraction）：cumulative 43/600 = **7.2%**，均匀增长
+  - sigma-boundary：soft_neg_elements=20 / soft_steps=19（全部在 σ<0.05 软门区）；nan_rollouts=0、无硬门 RuntimeError → 真实轨迹无硬负权重，验证之前"负权重非 blocker"结论在 RL 训练全程成立
+  - VRAM：max_allocated 4.40GB 平台 → step 50 首次 eval 后升至 5.84GB 平台并保持（无单调增长）；driver 层峰值 5345MiB；结束后 729MiB
+  - 产物已验证：run_metadata.json + learning_curve.csv + eval_snapshot.pth（1.36GB，step=150、130 shadow、ema_num_updates=150）
+  - advantage statistics 未逐 group 打点（仅有 reward std / zvg 代理）——若 review 需要可下轮加 logging
+- [x] **Review 裁定 SMOKE=PASS**；不跑 2500-step probe / 不跑 500-step pilot；补 3 个 audit + 2 条短 LR probe（1e-6 / 1e-5，各 150 步；3e-6 复用 smoke 数据）
+- [x] **Audit 完成**（scripts/rl1_post_smoke_audit.py，eval-only 未 commit）：
+  - step0 fixed eval（smoke 同 seed 同代码）：reward=0.1979（smoke step50 0.1883 → 100 0.1837 → 150 0.1837，小幅下降但噪声内）；step0 NLL=7.0490（→7.0186→7.0130→7.0171，微升）
+  - step0 greedy（audit-only 新代码，argmax 变体同 J）：0.2375 vs sampled 0.1979；greedy 不在 smoke 记录中，50/100/150 的 greedy 用 snapshot 离线补
+  - sigma 口径修正：153,600 = 150 更新 × 8 chunk × 128 步的 **validity_check 调用数**（= 307,200 trajectory-steps = 3.95e12 elements）；soft_steps=19 = 软区失败 chunk-steps、soft_neg_elements=20 = 负权重元素总数（均只在 σ<0.05 尾段，即 step ≥112 区域）
+  - J support：σ≥0.05 步 mean 117.6/128 = 91.9%；被截断 objective support mean 10.4/128 = **8.1%**（per-prompt 7–16 步，全部在 σ→0 尾段）；instrumented 3072 prompt-steps 样本 0 负权重（与 smoke 全局率一致）
+  - drift：‖θ150_raw−θ0‖/‖θ0‖ = **1.54e-4**；‖θ150_ema−θ0‖/‖θ0‖ = **1.44e-4**
+- [x] training/rl.py 纯 logging 增强（用户 C 段允许清单内，objective/sampling/update 零改动，未 commit）：A mean/std/mean_abs、torch.cuda 全内存指标、fixed eval RAW(PRIMARY)+EMA(SECONDARY)（EMA NLL 路径逐位保持 smoke 口径：corruption_seed+1000 首次使用仍为 EMA pass）、metadata 加 allocator_env+git_head
+- [x] **lrprobe-1e6 首轮 aborted + 已重启**：首轮（122325）step50 eval 发现 raw NLL 读数异常（RAW=25.78 vs EMA=7.04，eval8 RAW=0.1979=step0 → 权重没坏）；离线复现定位：run_eval raw pass 用的 seed+2000 corruption 流抽到 σ=0.002 极端低-sigma 样本（单块 loss=1009.6 → 64 块均值 22.84；seed+1000 流为 7.05）→ **定性为 high-variance / pathological realization（非错误数据、非模型退化）**；修复：raw/EMA 共用同一冻结 corruption realization（seed+1000，独立 generator 对象，配对比较，EMA 逐位保持 smoke 口径）；证据 /tmp/lrprobe-1e6-aborted-artifact.log；aborted 至 ~step60 后 kill 重启（lrprobe-1e6-125140），step1 逐位复现 0.1290±0.1061
+- [x] 注：eval NLL 对 σ≈0 的 corruption 抽取高方差敏感（seed+1000 流最差块 σ=0.040/loss=73.3 也偏大）——**跨 run 比较必须用同一冻结 corruption realization**；修复属 logging，非 evaluation protocol / recipe 变化
+- [x] 用户定案（最终 review 要求）：① raw/EMA NLL 用完全相同冻结 corruption realization ② seed+2000 记为 high-variance/pathological realization ③ **J support=91.9% / truncation=8.1% 必须进入 protocol revision** ④ 禁 CPI/OrderGap 选 LR ⑤ 三条 probe 完成后停止，统一回报后再定 LR
+- [x] **lrprobe-1e6-125140 完成**（3493s，零 OOM）：raw NLL 修复验证成功（RAW 7.0510→7.0431→7.0424 vs EMA 7.0407→7.0335→7.0448，配对跟踪；step50 RAW≈step0 基线 7.0490）；eval8 RAW 0.1979→0.1979→0.1933（step0 0.1979 → 平）；zvg 38/600=6.3%；peak_alloc 5.84GB / peak_resv 7.08GB 平台稳定；step 1 逐位复现
+- [x] **lrprobe-1e5-135019 已启动**（13:50，recipe 唯一差异 lr=1e-5）；step 1 逐位一致（0.1290±0.1061）→ 三条 run seed 流同源第三次实证
+- [x] **lrprobe-1e5-135019 完成**（3489s，零 OOM）：eval8 RAW 0.1883→0.1798→0.1709（step150 raw<EMA 0.1798，1e-5 下 raw/EMA 首次可见分歧）；NLL RAW 7.0128→7.0272→7.0228（≤step0 7.0490）；zvg 45/600=7.5%；soft_neg 15/15；nan_rollouts=0
+- [x] **LR review 离线收尾完成**（scripts/rl1_lr_review_offline.py，reports/lr_probe_summary.json；7/7 交叉验证与 logged 逐位吻合）：drift 线性标度（1e-6: 5.3e-5 / 3e-6: 1.5e-4 / 1e-5: 5.3e-4）；NLL 全 ≤ step0（无退化）；**greedy eval8 全 LR 均高于 step0 0.2375（3e-6: 0.2803 最大 / 1e-6: 0.2625 / 1e-5: 0.2622）→ 无采样噪声口径下可见真实 task learning 信号**；sampled eval8 受 gumbel-stable 分辨率限制（多数 per-prompt 与 step0 相同）
+- [x] **统一 LR review 汇报已交付**：三条 150-step calibration 全部完成；按用户 E 段**停止**，等 LR review（不自动选 LR / 不跑 2500 / 不开 500-step pilot）；protocol revision 议题已列：J support 91.9% / truncation 8.1%、冻结 corruption realization、greedy 作为补充 eval 口径
+- [x] **LR review 裁定：formal LR = 3e-6**（逐字表述入 v1.0 §0.1；不声称统计显著；LR calibration 终止，不再搜中间值）
+- [x] **protocol v1.0 FROZEN 完成**（post_training_rl_plan_v1.0_FROZEN.md，SHA 13e97be7…，commit 4f855b5，8 文件 1149 行新增）：8 项修订全部入协议（LR=3e-6 / safe-region truncated PG 命名 / σ=0.05 经验边界语义 / NLL 冻结 corruption realization / RAW primary+EMA secondary+greedy supplementary / formal fixed eval = manifest idx 64–127 的 64 样本 @ 0/50/100/250/500 / allocator=memory engineering config / recipe 八项保持）；一致性检查：config rl 默认与 frozen recipe 逐项一致（lr 3e-6/G4/P4/pool64/128/chunk2/seed0/init s1-10200）、manifest SHA OK（1897bd14…）、working tree clean、D: 35GB ≥30GB 前置满足（pilot 启动前复核）
+- [ ] **等 freeze review PASS 后才启动 500-step formal pilot**（lr=3e-6，评估点 0/50/100/250/500，命令见 v1.0 §47：rl.n_steps=500 rl.name=rlpilot；启动前需实现：64-sample 独立 eval 子集 + step-0 eval + greedy eval 口径，均不改协议）

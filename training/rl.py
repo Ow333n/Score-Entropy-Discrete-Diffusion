@@ -9,6 +9,7 @@
 import csv
 import json
 import os
+import subprocess
 import sys
 import time
 
@@ -29,23 +30,36 @@ PROTOCOL_VERSION = "v0.2-rl1"
 
 
 def run_eval(model, ema, noise, graph, eval_ds, cfg, device):
-    """64 块 EMA eval loss (与 training/vanilla.py 同口径, NLL 退化监控)。"""
-    g = torch.Generator(device=device).manual_seed(cfg.seeds.corruption_seed + 1000)
+    """64 块 NLL 评估: RAW (PRIMARY) + EMA (SECONDARY)。
+
+    raw/EMA 使用同一条 corruption 抽取流 (corruption_seed+1000, 独立 generator 对象):
+    - 配对比较: 两者看到完全相同的 corruption → NLL 差纯粹来自权重
+    - EMA 路径与 smoke 逐位一致 (同 seed 首次使用, 已验证 seed+1000 流良性;
+      其他 seed 可能抽到 σ≈0 病态 chunk, 见 /tmp/lrprobe-1e6-aborted-artifact.log)
+    """
+    g_ema = torch.Generator(device=device).manual_seed(cfg.seeds.corruption_seed + 1000)
+    g_raw = torch.Generator(device=device).manual_seed(cfg.seeds.corruption_seed + 1000)
     from task_data.corruption import corrupt_span_batch
     from training.vanilla import span_task_loss
-    total, n = 0.0, 0
-    with torch.no_grad():
-        ema.store(model.parameters())
-        ema.copy_to(model.parameters())
-        for bi in range(cfg.data.eval_chunks):
-            x0 = eval_ds[bi]["input_ids"].to(device)[None]
-            x_t, span_mask, sigma, dsigma, _ = corrupt_span_batch(
-                x0, noise, cfg.data.span_min, cfg.data.span_max, graph.dim - 1, generator=g)
-            total += span_task_loss(noise, graph, model, x0, x_t, span_mask,
-                                    sigma, dsigma, train=False).item()
-            n += 1
-        ema.restore(model.parameters())
-    return total / n
+
+    def nll_pass(gen):
+        total, n = 0.0, 0
+        with torch.no_grad():
+            for bi in range(cfg.data.eval_chunks):
+                x0 = eval_ds[bi]["input_ids"].to(device)[None]
+                x_t, span_mask, sigma, dsigma, _ = corrupt_span_batch(
+                    x0, noise, cfg.data.span_min, cfg.data.span_max, graph.dim - 1, generator=gen)
+                total += span_task_loss(noise, graph, model, x0, x_t, span_mask,
+                                        sigma, dsigma, train=False).item()
+                n += 1
+        return total / n
+
+    raw_nll = nll_pass(g_raw)          # model 当前为 raw 权重
+    ema.store(model.parameters())
+    ema.copy_to(model.parameters())
+    ema_nll = nll_pass(g_ema)          # 同 smoke 的生成器首次使用 → 逐位一致
+    ema.restore(model.parameters())
+    return raw_nll, ema_nll
 
 
 def main():
@@ -72,6 +86,8 @@ def main():
     log(f"protocol={PROTOCOL_VERSION} lr={cfg.rl.lr} n_steps={cfg.rl.n_steps} "
         f"G={cfg.rl.g} P={cfg.rl.prompts_per_step} pool={cfg.rl.pool} "
         f"rollout_steps={cfg.rl.rollout_steps} seed={cfg.seeds.model_seed}")
+    log(f"allocator_env={os.environ.get('PYTORCH_CUDA_ALLOC_CONF', 'default')} "
+        f"git_head={subprocess.run(['git', 'rev-parse', 'HEAD'], capture_output=True, text=True).stdout.strip() or 'unknown'}")
 
     # RL init = SFT s1 EMA-10200 (RL-G0 已验证逐位一致)
     model, info = loader.load_rl_init(cfg.rl.init_dir, cfg.rl.init_ckpt, device)
@@ -137,6 +153,7 @@ def main():
         rewards = torch.stack([rw.m0_reward(x0[b:b + 1], trajs[b]["final_x"].unsqueeze(0).to(device),
                                             m0[b:b + 1]) for b in range(x0.shape[0])]).squeeze(1)
         A = T.mean_centered_advantage(rewards.view(-1, cfg.rl.g)).view(-1)
+        adv_mean, adv_std, adv_mean_abs = A.mean().item(), A.std().item(), A.abs().mean().item()
         zvg = int((A.view(-1, cfg.rl.g).abs().sum(dim=1) == 0).sum())
         stats["zero_var_groups"] += zvg
         stats["n_groups"] += cfg.rl.prompts_per_step
@@ -179,18 +196,27 @@ def main():
 
         if step % 10 == 0 or step == 1:
             el = time.time() - t0
+            alloc = torch.cuda.memory_allocated() / 1e9
+            resv = torch.cuda.memory_reserved() / 1e9
+            max_alloc = torch.cuda.max_memory_allocated() / 1e9
+            max_resv = torch.cuda.max_memory_reserved() / 1e9
+            free_b, _ = torch.cuda.mem_get_info()
             log(f"step {step:4d}: reward={rewards.mean().item():.4f}±{rewards.std().item():.4f} "
                 f"zvg={stats['zero_var_groups']}/{stats['n_groups']} "
+                f"A_mean={adv_mean:+.5f} A_std={adv_std:.5f} A_mean_abs={adv_mean_abs:.5f} "
                 f"grad_norm={gnorm:.2f} loss={total_loss:.4f} "
-                f"{step / el:.3f} steps/s vram={torch.cuda.max_memory_allocated() / 1e9:.2f}GB")
-            curve_rows.append([step, rewards.mean().item(), rewards.std().item(), gnorm, total_loss])
+                f"{step / el:.3f} steps/s alloc={alloc:.2f}GB resv={resv:.2f}GB "
+                f"peak_alloc={max_alloc:.2f}GB peak_resv={max_resv:.2f}GB free={free_b / 1e9:.2f}GB")
+            curve_rows.append([step, rewards.mean().item(), rewards.std().item(), gnorm, total_loss,
+                               adv_mean, adv_std, adv_mean_abs, alloc, resv, max_alloc, max_resv,
+                               free_b / 1e9])
 
         if step % 50 == 0:
             model.eval()
-            eval_loss = run_eval(model, ema, noise, graph, valid_ds, cfg, device)
-            model.train()
-            # eval subset reward
-            with torch.no_grad():
+            raw_eval_loss, ema_eval_loss = run_eval(model, ema, noise, graph, valid_ds, cfg, device)
+
+            def eval8_pass():
+                """fixed 8 prompts rollout reward (同 smoke seed 同代码)。"""
                 trs = []
                 for lo in range(0, 8, 4):
                     trs += rollout_chunk(model, sampling_score_fn, graph, noise,
@@ -201,7 +227,17 @@ def main():
                                                trs[b]["final_x"].unsqueeze(0).to(device),
                                                m0_pool[eval_idx[b:b + 1]])
                                   for b in range(8)]).squeeze(1)
-            log(f"step {step:4d}: eval_loss(EMA)={eval_loss:.4f} eval8_reward={er.mean().item():.4f}")
+                return er
+
+            with torch.no_grad():
+                er_raw = eval8_pass()          # RAW (PRIMARY), run_eval restore 后 model=raw
+                ema.store(model.parameters())
+                ema.copy_to(model.parameters())
+                er_ema = eval8_pass()          # EMA (SECONDARY), 同 seed → 同 J
+                ema.restore(model.parameters())
+            model.train()
+            log(f"step {step:4d}: eval_nll RAW={raw_eval_loss:.4f} EMA={ema_eval_loss:.4f} "
+                f"eval8_reward RAW={er_raw.mean().item():.4f} EMA={er_ema.mean().item():.4f}")
 
     # --- 保存 eval snapshot (raw + EMA) ---
     snapshot = dict(model={k: v.detach().cpu() for k, v in model.state_dict().items()},
@@ -210,10 +246,15 @@ def main():
                     step=cfg.rl.n_steps)
     torch.save(snapshot, os.path.join(work_dir, "eval_snapshot.pth"))
     json.dump(dict(protocol=PROTOCOL_VERSION, stats=stats, n_steps=cfg.rl.n_steps,
-                   final_reward_mean=float(rewards.mean()), init=info),
+                   final_reward_mean=float(rewards.mean()), init=info,
+                   allocator_env=os.environ.get("PYTORCH_CUDA_ALLOC_CONF", "default"),
+                   git_head=subprocess.run(["git", "rev-parse", "HEAD"],
+                                           capture_output=True, text=True).stdout.strip() or "unknown"),
               open(os.path.join(work_dir, "run_metadata.json"), "w"), indent=2)
     with open(os.path.join(work_dir, "learning_curve.csv"), "w", newline="") as f:
-        csv.writer(f).writerow(["step", "reward_mean", "reward_std", "grad_norm", "loss"])
+        csv.writer(f).writerow(["step", "reward_mean", "reward_std", "grad_norm", "loss",
+                                "adv_mean", "adv_std", "adv_mean_abs", "alloc_gb", "resv_gb",
+                                "peak_alloc_gb", "peak_resv_gb", "free_gb"])
         csv.writer(f).writerows(curve_rows)
     log(f"完成: {cfg.rl.n_steps} RL steps in {time.time() - t0:.0f}s")
     log(f"metadata: {os.path.join(work_dir, 'run_metadata.json')}")

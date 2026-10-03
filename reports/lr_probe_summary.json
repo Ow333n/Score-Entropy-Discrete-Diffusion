@@ -1,0 +1,52 @@
+{
+  "protocol": "v0.2-rl1",
+  "purpose": "短 LR probe (150 optimizer steps each) 校准, D 口径 (task/optimization/stability), 禁用 CPI/OrderGap",
+  "step0_anchor": {
+    "fixed_eval8_sampled_raw": 0.1979,
+    "fixed_eval8_greedy_raw": 0.2375,
+    "nll_64chunk_raw_eq_ema": 7.0490
+  },
+  "runs": {
+    "3e-6 (smoke, rl1-smoke-022319)": {
+      "drift_raw": 1.54e-4, "drift_ema": 1.44e-4,
+      "nll_raw_150": 7.0125, "nll_ema_150": 7.0171,
+      "eval8_sampled_raw_150": 0.1837, "eval8_greedy_raw_150": 0.2803,
+      "eval8_greedy_ema_150": 0.2625,
+      "train_reward_150": [0.1826, 0.2644],
+      "zvg_cum": "43/600", "nan_rollouts": 0,
+      "soft_neg_elements": 20, "soft_steps": 19,
+      "runtime_s": 3456, "peak_alloc_gb": 5.84, "peak_resv_gb": 7.08
+    },
+    "1e-6 (lrprobe-1e6-125140)": {
+      "drift_raw": 5.34e-5, "drift_ema": 4.96e-5,
+      "nll_raw_150": 7.0424, "nll_ema_150": 7.0448,
+      "eval8_sampled_raw_150": 0.1933, "eval8_greedy_raw_150": 0.2625,
+      "eval8_greedy_ema_150": 0.2714,
+      "train_reward_150": [0.1781, 0.2470],
+      "zvg_cum": "38/600", "nan_rollouts": 0,
+      "soft_neg_elements": 18, "soft_steps": 18,
+      "runtime_s": 3493, "peak_alloc_gb": 5.84, "peak_resv_gb": 7.08
+    },
+    "1e-5 (lrprobe-1e5-135019)": {
+      "drift_raw": 5.28e-4, "drift_ema": 4.98e-4,
+      "nll_raw_150": 7.0228, "nll_ema_150": 7.0290,
+      "eval8_sampled_raw_150": 0.1709, "eval8_greedy_raw_150": 0.2622,
+      "eval8_greedy_ema_150": 0.2760,
+      "train_reward_150": [0.1781, 0.2470],
+      "zvg_cum": "45/600", "nan_rollouts": 0,
+      "soft_neg_elements": 15, "soft_steps": 15,
+      "runtime_s": 3489, "peak_alloc_gb": 5.84, "peak_resv_gb": 7.08
+    }
+  },
+  "cross_validation": {
+    "note": "offline harness 与各 run train.log logged 值逐位吻合 (7/7 checks OK): smoke EMA NLL 7.0171, 1e-6 raw/ema NLL, 1e-5 raw/ema NLL, eval8 raw @150 ×3",
+    "corruption_realization": "raw/EMA NLL 共用冻结 corruption_seed+1000 流 (smoke 同流, 配对比较)",
+    "seed_plus_2000_note": "首轮 1e-6 的 seed+2000 流抽到 σ=0.002 极端低-sigma 样本 → 定性为 high-variance / pathological realization, 非错误数据; 证据 /tmp/lrprobe-1e6-aborted-artifact.log"
+  },
+  "protocol_revision_agenda": [
+    "J support = 91.9% (σ≥0.05 步), truncated objective support = 8.1% (per-prompt 7-16/128 步, 全在 σ→0 尾段) 必须进入 protocol revision 讨论",
+    "eval NLL 跨 run 比较必须用同一冻结 corruption realization (σ≈0 抽取高方差敏感)",
+    "sampled eval8 在小 drift 下分辨率受限 (gumbel-stable 轨迹); greedy eval8 提供无采样噪声的补充分辨率"
+  ],
+  "lr_selection_methodology": "D 口径 only: raw fixed-eval reward step0→150 / raw greedy / NLL degradation / reward trend / grad norm / NaN / collapse / update magnitude; EMA secondary; CPI/OrderGap 未使用"
+}
