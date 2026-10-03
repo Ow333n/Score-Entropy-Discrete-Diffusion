@@ -25,41 +25,31 @@ from model.ema import ExponentialMovingAverage
 from rl import loader, reward as rw
 from rl import transition as T
 from rl.rollout import rollout_chunk
+from rl.eval_formal import build_eval_pools, task_eval_point, save_eval_point
 
-PROTOCOL_VERSION = "v0.2-rl1"
+PROTOCOL_VERSION = "v1.0-rl1"
 
 
-def run_eval(model, ema, noise, graph, eval_ds, cfg, device):
-    """64 块 NLL 评估: RAW (PRIMARY) + EMA (SECONDARY)。
-
-    raw/EMA 使用同一条 corruption 抽取流 (corruption_seed+1000, 独立 generator 对象):
-    - 配对比较: 两者看到完全相同的 corruption → NLL 差纯粹来自权重
-    - EMA 路径与 smoke 逐位一致 (同 seed 首次使用, 已验证 seed+1000 流良性;
-      其他 seed 可能抽到 σ≈0 病态 chunk, 见 /tmp/lrprobe-1e6-aborted-artifact.log)
-    """
-    g_ema = torch.Generator(device=device).manual_seed(cfg.seeds.corruption_seed + 1000)
-    g_raw = torch.Generator(device=device).manual_seed(cfg.seeds.corruption_seed + 1000)
-    from task_data.corruption import corrupt_span_batch
-    from training.vanilla import span_task_loss
-
-    def nll_pass(gen):
-        total, n = 0.0, 0
-        with torch.no_grad():
-            for bi in range(cfg.data.eval_chunks):
-                x0 = eval_ds[bi]["input_ids"].to(device)[None]
-                x_t, span_mask, sigma, dsigma, _ = corrupt_span_batch(
-                    x0, noise, cfg.data.span_min, cfg.data.span_max, graph.dim - 1, generator=gen)
-                total += span_task_loss(noise, graph, model, x0, x_t, span_mask,
-                                        sigma, dsigma, train=False).item()
-                n += 1
-        return total / n
-
-    raw_nll = nll_pass(g_raw)          # model 当前为 raw 权重
-    ema.store(model.parameters())
-    ema.copy_to(model.parameters())
-    ema_nll = nll_pass(g_ema)          # 同 smoke 的生成器首次使用 → 逐位一致
-    ema.restore(model.parameters())
-    return raw_nll, ema_nll
+def save_snapshot(work_dir, model, ema, step, full=False, optimizer=None, scaler=None):
+    """§31: eval snapshot ({model, ema, step}) 或 full checkpoint (含 optimizer/scaler)。
+    写入 .tmp + rename 防半截文件。"""
+    if full:
+        snap = dict(model={k: v.detach().cpu() for k, v in model.state_dict().items()},
+                    ema=dict(decay=ema.decay, num_updates=ema.num_updates,
+                             shadow_params=[s.detach().cpu() for s in ema.shadow_params]),
+                    optimizer=optimizer.state_dict(), scaler=scaler.state_dict(), step=step)
+        name = f"checkpoint_step{step}.pth"
+    else:
+        snap = dict(model={k: v.detach().cpu() for k, v in model.state_dict().items()},
+                    ema=dict(decay=ema.decay, num_updates=ema.num_updates,
+                             shadow_params=[s.detach().cpu() for s in ema.shadow_params]),
+                    step=step)
+        name = f"eval_snapshot_step{step}.pth"
+    path = os.path.join(work_dir, name)
+    tmp = path + ".tmp"
+    torch.save(snap, tmp)
+    os.replace(tmp, path)
+    return path
 
 
 def main():
@@ -113,8 +103,11 @@ def main():
             m0_pool[k, r["initial_masked_positions"]] = True
     log(f"prompt pool: {cfg.rl.pool} 样本 (|M0| mean={m0_pool.sum(-1).float().mean().item():.1f})")
 
-    # 固定 eval subset (8 条) 的 mean reward 监控
-    eval_idx = torch.tensor(list(range(8)), device=device)
+    # formal fixed eval subset (v1.0 §35): manifest 索引 64–127, 64 samples,
+    # 独立于 training pool 0–63; IDs 固定并落盘
+    eval_pools, eval_ids = build_eval_pools(cfg, device, start=64, n=64)
+    with open(os.path.join(work_dir, "eval_subset_ids.json"), "w") as f:
+        json.dump(dict(indices=list(range(64, 128)), ids=eval_ids), f, indent=2)
 
     # 有效数据集 (eval loss 监控)
     from data import get_dataset
@@ -128,6 +121,31 @@ def main():
     stats = dict(zero_var_groups=0, n_groups=0, nan_rollouts=0)
     curve_rows = []
     t0 = time.time()
+
+    # --- formal step0 task evaluation (v1.0 §32/§35: 在任何 RL update 之前) ---
+    log("step0: formal task evaluation (64-sample subset, RAW/EMA, sampled+greedy, frozen NLL)")
+    model.eval()
+    res0 = task_eval_point(model, ema, sampling_score_fn, graph, noise, valid_ds,
+                           eval_pools, eval_ids, cfg, device, tag="step0")
+    save_eval_point(work_dir, res0)
+    model.train()
+    log(f"step0: nll RAW={res0['nll_raw']:.4f} EMA={res0['nll_ema']:.4f} "
+        f"sampled RAW={res0['sampled_raw_mean']:.4f} EMA={res0['sampled_ema_mean']:.4f} "
+        f"greedy RAW={res0['greedy_raw_mean']:.4f} EMA={res0['greedy_ema_mean']:.4f}")
+
+    # --- formal step0 CPI / OrderGap (v1.0 §36 + gate 4 严格顺序; step0 raw==EMA) ---
+    log("step0: CPI / OrderGap evaluation (frozen manifest, weights=ema; step0 raw==EMA)")
+    import subprocess as _sp
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    for script, out in [("evaluation/eval_cpi.py", "step0_cpi.json"),
+                        ("evaluation/eval_order_gap.py", "step0_order_gap.json")]:
+        log(f"step0: running {script} → {out}")
+        _sp.run([sys.executable, os.path.join(root, script),
+                 "--model_path", cfg.rl.init_dir, "--ckpt", cfg.rl.init_ckpt,
+                 "--weights", "ema", "--chunk", "4",
+                 "--out", os.path.join(work_dir, out)], check=True, cwd=root)
+        log(f"step0: {out} done")
+    log("step0 evaluation complete; optimizer step 1 next")
 
     for step in range(1, cfg.rl.n_steps + 1):
         # --- rollout (no_grad) ---
@@ -211,40 +229,29 @@ def main():
                                adv_mean, adv_std, adv_mean_abs, alloc, resv, max_alloc, max_resv,
                                free_b / 1e9])
 
-        if step % 50 == 0:
+        if step in (50, 100, 250, 500):
+            # v1.0 §31/§32: 评估点 0/50/100/250/500; 先落 eval snapshot 供 post-run CPI/OrderGap
             model.eval()
-            raw_eval_loss, ema_eval_loss = run_eval(model, ema, noise, graph, valid_ds, cfg, device)
-
-            def eval8_pass():
-                """fixed 8 prompts rollout reward (同 smoke seed 同代码)。"""
-                trs = []
-                for lo in range(0, 8, 4):
-                    trs += rollout_chunk(model, sampling_score_fn, graph, noise,
-                                         x0_pool[eval_idx[lo:lo + 4]], xt0_pool[eval_idx[lo:lo + 4]],
-                                         sig0_pool[eval_idx[lo:lo + 4]], cfg.rl.rollout_steps,
-                                         seed=cfg.rl.seed + 424242 + lo, mask_token=MASK)[0]
-                er = torch.stack([rw.m0_reward(x0_pool[eval_idx[b:b + 1]],
-                                               trs[b]["final_x"].unsqueeze(0).to(device),
-                                               m0_pool[eval_idx[b:b + 1]])
-                                  for b in range(8)]).squeeze(1)
-                return er
-
-            with torch.no_grad():
-                er_raw = eval8_pass()          # RAW (PRIMARY), run_eval restore 后 model=raw
-                ema.store(model.parameters())
-                ema.copy_to(model.parameters())
-                er_ema = eval8_pass()          # EMA (SECONDARY), 同 seed → 同 J
-                ema.restore(model.parameters())
+            save_snapshot(work_dir, model, ema, step, full=False)
+            res = task_eval_point(model, ema, sampling_score_fn, graph, noise, valid_ds,
+                                  eval_pools, eval_ids, cfg, device, tag=f"step{step}")
+            save_eval_point(work_dir, res)
             model.train()
-            log(f"step {step:4d}: eval_nll RAW={raw_eval_loss:.4f} EMA={ema_eval_loss:.4f} "
-                f"eval8_reward RAW={er_raw.mean().item():.4f} EMA={er_ema.mean().item():.4f}")
+            log(f"step {step:4d}: formal eval nll RAW={res['nll_raw']:.4f} EMA={res['nll_ema']:.4f} "
+                f"sampled64 RAW={res['sampled_raw_mean']:.4f} EMA={res['sampled_ema_mean']:.4f} "
+                f"greedy RAW={res['greedy_raw_mean']:.4f} EMA={res['greedy_ema_mean']:.4f}")
 
-    # --- 保存 eval snapshot (raw + EMA) ---
-    snapshot = dict(model={k: v.detach().cpu() for k, v in model.state_dict().items()},
-                    ema=dict(decay=ema.decay, num_updates=ema.num_updates,
-                             shadow_params=[s.detach().cpu() for s in ema.shadow_params]),
-                    step=cfg.rl.n_steps)
-    torch.save(snapshot, os.path.join(work_dir, "eval_snapshot.pth"))
+        if step % 25 == 0:
+            # §31: atomic rolling checkpoint_latest（每 25 步覆盖）
+            p = save_snapshot(work_dir, model, ema, step, full=True,
+                              optimizer=optimizer, scaler=scaler)
+            os.replace(p, os.path.join(work_dir, "checkpoint_latest.pth"))
+
+    # --- §31: step500 full checkpoint + rolling latest ---
+    import shutil
+    final_full = save_snapshot(work_dir, model, ema, cfg.rl.n_steps, full=True,
+                               optimizer=optimizer, scaler=scaler)
+    shutil.copyfile(final_full, os.path.join(work_dir, "checkpoint_latest.pth"))
     json.dump(dict(protocol=PROTOCOL_VERSION, stats=stats, n_steps=cfg.rl.n_steps,
                    final_reward_mean=float(rewards.mean()), init=info,
                    allocator_env=os.environ.get("PYTORCH_CUDA_ALLOC_CONF", "default"),
