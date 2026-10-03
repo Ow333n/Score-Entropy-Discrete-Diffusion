@@ -47,14 +47,16 @@ def main():
     valid_ds = get_dataset("wikitext103", "validation", cache_dir=cfg.data.cache_dir,
                            block_size=cfg.data.seq_len, num_proc=4)
 
-    pools, eval_ids = build_eval_pools(cfg, device, start=64, n=64)
-    x0, xt0, sig0, m0 = pools
+    x0, xt0, sig0, m0, eval_ids = build_eval_pools(cfg, device, start=64, n=64)
+    pools = (x0, xt0, sig0, m0)
 
     free0, total0 = torch.cuda.mem_get_info()
     rng = torch.Generator().manual_seed(12345)
     rng_state_before = rng.get_state().clone()
     ref_params = [p.detach().clone() for p in model.parameters()]
     ref_shadow = [s.detach().clone() for s in ema.shadow_params]
+    torch.cuda.empty_cache()
+    resv0 = torch.cuda.memory_reserved()   # 进程内 reserved 基线（含权重对照克隆，免疫外部进程波动）
 
     results = []
 
@@ -106,10 +108,11 @@ def main():
                            eval_ids, cfg, device, tag="step0")
     p = save_eval_point(OUT, res0)
     need = ["sampled_raw_mean", "sampled_ema_mean", "greedy_raw_mean", "greedy_ema_mean",
-            "nll_raw", "nll_ema", "eval_indices"]
+            "nll_raw", "nll_ema"]
     saved = json.load(open(p))
     results.append(check("RAW & EMA evaluable (all 6 metrics present)",
-                         all(k in saved and isinstance(saved[k], (int, float)) for k in need),
+                         all(k in saved and isinstance(saved[k], (int, float)) for k in need)
+                         and isinstance(saved.get("eval_indices"), list),
                          f"sampled raw/ema={saved['sampled_raw_mean']:.4f}/{saved['sampled_ema_mean']:.4f} "
                          f"greedy raw/ema={saved['greedy_raw_mean']:.4f}/{saved['greedy_ema_mean']:.4f} "
                          f"nll raw/ema={saved['nll_raw']:.4f}/{saved['nll_ema']:.4f}"))
@@ -133,15 +136,18 @@ def main():
     model.train()
     results.append(check("model.train() restores training mode", model.training))
 
-    # 11/12. VRAM：无 OOM、无持续增长
+    # 11/12. VRAM：无 OOM、无持续增长（进程内口径 + 整卡快照供参考）
     free1, total1 = torch.cuda.mem_get_info()
     torch.cuda.empty_cache()
+    resv1 = torch.cuda.memory_reserved()
     free2, _ = torch.cuda.mem_get_info()
     results.append(check("no OOM / free memory sane", free1 > 1e9,
-                         f"free before/after eval: {free0 / 1e9:.2f}→{free1 / 1e9:.2f}GB"))
-    results.append(check("no persistent VRAM growth (after empty_cache)",
-                         (free2 - free0) / 1e9 > -1.0,
-                         f"free after empty_cache={free2 / 1e9:.2f}GB (baseline {free0 / 1e9:.2f}GB)"))
+                         f"整卡 free 最低点 {free1 / 1e9:.2f}GB (基线 {free0 / 1e9:.2f}GB)"))
+    results.append(check("no persistent VRAM growth (process-local reserved)",
+                         (resv1 - resv0) / 1e9 < 0.2,
+                         f"reserved {resv0 / 1e9:.2f}→{resv1 / 1e9:.2f}GB after empty_cache "
+                         f"(peak {torch.cuda.max_memory_reserved() / 1e9:.2f}GB); "
+                         f"整卡 free {free2 / 1e9:.2f}GB (含游戏占用波动)"))
 
     # 13. no dxg error
     import subprocess

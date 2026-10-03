@@ -105,7 +105,8 @@ def main():
 
     # formal fixed eval subset (v1.0 §35): manifest 索引 64–127, 64 samples,
     # 独立于 training pool 0–63; IDs 固定并落盘
-    eval_pools, eval_ids = build_eval_pools(cfg, device, start=64, n=64)
+    x0_e, xt0_e, sig0_e, m0_e, eval_ids = build_eval_pools(cfg, device, start=64, n=64)
+    eval_pools = (x0_e, xt0_e, sig0_e, m0_e)
     with open(os.path.join(work_dir, "eval_subset_ids.json"), "w") as f:
         json.dump(dict(indices=list(range(64, 128)), ids=eval_ids), f, indent=2)
 
