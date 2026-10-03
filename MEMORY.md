@@ -319,4 +319,12 @@
 - [x] **统一 LR review 汇报已交付**：三条 150-step calibration 全部完成；按用户 E 段**停止**，等 LR review（不自动选 LR / 不跑 2500 / 不开 500-step pilot）；protocol revision 议题已列：J support 91.9% / truncation 8.1%、冻结 corruption realization、greedy 作为补充 eval 口径
 - [x] **LR review 裁定：formal LR = 3e-6**（逐字表述入 v1.0 §0.1；不声称统计显著；LR calibration 终止，不再搜中间值）
 - [x] **protocol v1.0 FROZEN 完成**（post_training_rl_plan_v1.0_FROZEN.md，SHA 13e97be7…，commit 4f855b5，8 文件 1149 行新增）：8 项修订全部入协议（LR=3e-6 / safe-region truncated PG 命名 / σ=0.05 经验边界语义 / NLL 冻结 corruption realization / RAW primary+EMA secondary+greedy supplementary / formal fixed eval = manifest idx 64–127 的 64 样本 @ 0/50/100/250/500 / allocator=memory engineering config / recipe 八项保持）；一致性检查：config rl 默认与 frozen recipe 逐项一致（lr 3e-6/G4/P4/pool64/128/chunk2/seed0/init s1-10200）、manifest SHA OK（1897bd14…）、working tree clean、D: 35GB ≥30GB 前置满足（pilot 启动前复核）
-- [ ] **等 freeze review PASS 后才启动 500-step formal pilot**（lr=3e-6，评估点 0/50/100/250/500，命令见 v1.0 §47：rl.n_steps=500 rl.name=rlpilot；启动前需实现：64-sample 独立 eval 子集 + step-0 eval + greedy eval 口径，均不改协议）
+- [x] **Freeze review PASS + implementation review PASS**（25/25 单测实跑核对 → errata #1；formal eval acceptance 17/17：64 samples / 零 overlap / IDs 落盘 / 冻结 corruption / greedy deterministic / 权重零变化 / RNG 正确 / 无泄漏 / 无 dxg；commit 2c59a6f）
+- [x] **500-step formal RL pilot 已启动**：`rlpilot-185545`（tmux `rlpilot`，18:55，HEAD 2c59a6f，expandable_segments:True，命令 rl.n_steps=500 rl.lr=3e-6 rl.name=rlpilot）；GPU 干净基线（1017MiB/1%）；D: 35GB
+- [x] step0 严格顺序执行完成：RL init 验证（step10200）→ **step0 formal task eval PASS**（nll 7.0490 / sampled 0.2562 / greedy 0.3365，与 acceptance 基线逐位一致）→ **step0 CPI PASS**（cpi_abs=0.2871 ∈ v4.1 frozen 区间 0.283–0.289，manifest SHA OK）→ OrderGap 跑完后进 optimizer step 1
+- [x] **500-step formal pilot 完成**（rlpilot-185545，14131s ≈ 3.9h，零 OOM/NaN，nan_rollouts=0，soft_neg 61/60，zvg 117/2000=5.85%，peak 7.03GB 无泄漏）：
+  - formal eval 轨迹（64-sample 子集）：nll_raw 7.0490→7.0100→7.0069→7.0477→**7.0342**；sampled_raw 0.2562→0.2585→0.2573→0.2579→**0.2619**；greedy_raw 0.3365→0.3373→0.3293→0.3277→**0.3380**（非单调、幅度噪声级）
+  - drift @500：raw 2.99e-4 / ema 2.75e-4（vs 150 步 1.54e-4，亚线性积累符合梯度抵消）
+  - 产物全部验证：checkpoint_step500（model+ema+opt+scaler）、eval snapshots 50/100/250/500、5 个 eval JSON、metadata（protocol v1.0-rl1/allocator/git 全记录）
+  - **⚠️ dxg 异常披露**：kernel 71402–71514s（≈22:10–22:12，step ~410–450 窗口）出现 **27 条 dxgkio_create_allocation EOVERFLOW(-75)**，112 秒窗口后自行消失；运行未受影响（无 crash/NaN/OOM，全部产物在窗口之后正常写出并验证通过）；疑似与并发 GPU 负载有关（用户游戏？待确认）——按 launch 规则属"dxg anomaly 但未造成 failure"，运行已自然完成
+- [ ] 待用户 go-ahead：post-run CPI/OrderGap（snapshots 50/100/250/500 × raw+ema，8+8 次 ≈ 50 min，需 GPU 空闲时跑）→ 统一科学判读（§40 matrix）→ 不自动进入下一阶段
