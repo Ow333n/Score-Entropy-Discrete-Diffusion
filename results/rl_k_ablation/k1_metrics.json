@@ -1,0 +1,45 @@
+{
+  "K": 1,
+  "steps": 100,
+  "drift": 0.0001606866717338562,
+  "eval": {
+    "step0": {
+      "nll_raw": 7.048981713087414,
+      "nll_ema": 7.048981713087414,
+      "sampled_raw": 0.25616094915312715,
+      "sampled_ema": 0.25616094915312715,
+      "greedy_raw": 0.3365134000778198,
+      "greedy_ema": 0.3365134000778198
+    },
+    "step50": {
+      "nll_raw": 7.053473880121601,
+      "nll_ema": 7.061354014280369,
+      "sampled_raw": 0.25641999833169393,
+      "sampled_ema": 0.25586724598542787,
+      "greedy_raw": 0.3345533498795703,
+      "greedy_ema": 0.335306606721133
+    },
+    "step100": {
+      "nll_raw": 7.052851108674076,
+      "nll_ema": 7.047621189223719,
+      "sampled_raw": 0.2589488967496436,
+      "sampled_ema": 0.2604667538253125,
+      "greedy_raw": 0.33776087866863236,
+      "greedy_ema": 0.33330905716866255
+    }
+  },
+  "reward_last": 0.2691,
+  "zvg": "26/400",
+  "nan_rollouts": 0,
+  "soft_neg": "8/8",
+  "grad_max": null,
+  "peak_alloc_gb": 6.361656832,
+  "peak_resv_gb": 7.400849408,
+  "steady_steps_per_s": 0.035,
+  "first_steps_per_s": 0.003,
+  "ram_final": {
+    "avail_gb": 3.226148,
+    "total_gb": 7.699948,
+    "swap_used_gb": 0.868596
+  }
+}

@@ -1,0 +1,118 @@
+{
+  "metrics": {
+    "k1-100": {
+      "K": 1,
+      "steps": 100,
+      "drift": 0.0001606866717338562,
+      "eval": {
+        "step0": {
+          "nll_raw": 7.048981713087414,
+          "nll_ema": 7.048981713087414,
+          "sampled_raw": 0.25616094915312715,
+          "sampled_ema": 0.25616094915312715,
+          "greedy_raw": 0.3365134000778198,
+          "greedy_ema": 0.3365134000778198
+        },
+        "step50": {
+          "nll_raw": 7.053473880121601,
+          "nll_ema": 7.061354014280369,
+          "sampled_raw": 0.25641999833169393,
+          "sampled_ema": 0.25586724598542787,
+          "greedy_raw": 0.3345533498795703,
+          "greedy_ema": 0.335306606721133
+        },
+        "step100": {
+          "nll_raw": 7.052851108674076,
+          "nll_ema": 7.047621189223719,
+          "sampled_raw": 0.2589488967496436,
+          "sampled_ema": 0.2604667538253125,
+          "greedy_raw": 0.33776087866863236,
+          "greedy_ema": 0.33330905716866255
+        }
+      },
+      "reward_last": 0.2691,
+      "zvg": "26/400",
+      "nan_rollouts": 0,
+      "soft_neg": "8/8",
+      "grad_max": null,
+      "peak_alloc_gb": 6.361656832,
+      "peak_resv_gb": 7.400849408,
+      "steady_steps_per_s": 0.035,
+      "first_steps_per_s": 0.003,
+      "ram_final": {
+        "avail_gb": 3.226148,
+        "total_gb": 7.699948,
+        "swap_used_gb": 0.868596
+      }
+    },
+    "k4-100": {
+      "K": 4,
+      "steps": 100,
+      "drift": 0.0001623239368200302,
+      "eval": {
+        "step0": {
+          "nll_raw": 7.048981713087414,
+          "nll_ema": 7.048981713087414,
+          "sampled_raw": 0.25616094915312715,
+          "sampled_ema": 0.25616094915312715,
+          "greedy_raw": 0.3365134000778198,
+          "greedy_ema": 0.3365134000778198
+        },
+        "step50": {
+          "nll_raw": 7.049375444141333,
+          "nll_ema": 7.0471924595331075,
+          "sampled_raw": 0.2570204208313953,
+          "sampled_ema": 0.2589325711305719,
+          "greedy_raw": 0.3351830980973318,
+          "greedy_ema": 0.33844150451477617
+        },
+        "step100": {
+          "nll_raw": 7.039773186741513,
+          "nll_ema": 7.044665942157735,
+          "sampled_raw": 0.2569816769391764,
+          "sampled_ema": 0.2588467196037527,
+          "greedy_raw": 0.34029898897279054,
+          "greedy_ema": 0.33675920963287354
+        }
+      },
+      "reward_last": 0.2732,
+      "zvg": "26/400",
+      "nan_rollouts": 0,
+      "soft_neg": "8/8",
+      "grad_max": null,
+      "peak_alloc_gb": 6.361656832,
+      "peak_resv_gb": 7.405043712,
+      "steady_steps_per_s": 0.033,
+      "first_steps_per_s": 0.003,
+      "ram_final": {
+        "avail_gb": 2.916812,
+        "total_gb": 7.699948,
+        "swap_used_gb": 0.57624
+      }
+    }
+  },
+  "compatibility": {
+    "step0": {
+      "cpi_abs": 0.2871,
+      "cpi_rms": 0.5469,
+      "delta_mean": -0.0077,
+      "order_gap_raw": 8.7475,
+      "order_gap_per_token": 0.5338,
+      "source": "harmonized sft (current-code)"
+    },
+    "k1_100": {
+      "cpi_abs": 0.2890625,
+      "cpi_rms": 0.5546875,
+      "delta_mean": -0.0024871826171875,
+      "order_gap_raw": 8.748849868774414,
+      "order_gap_per_token": 0.5333917737007141
+    },
+    "k4_100": {
+      "cpi_abs": 0.28515625,
+      "cpi_rms": 0.546875,
+      "delta_mean": -0.003997802734375,
+      "order_gap_raw": 8.731240272521973,
+      "order_gap_per_token": 0.5319472551345825
+    }
+  }
+}
