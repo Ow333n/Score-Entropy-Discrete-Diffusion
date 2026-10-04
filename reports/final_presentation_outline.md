@@ -29,6 +29,8 @@
   （absorbing 离散扩散）
 - 反向生成（Reverse Diffusion）：从部分 Mask 状态出发，128 步逐位置决定
   "保持 MASK 或跳到干净 token"——与自回归模型（AR）严格从左到右生成有本质区别
+  （模型一次 forward 可同时为多个 MASK 位置给出预测，但 sampler 在多个 reverse
+  steps 中随机决定哪些位置被 reveal：parallel prediction + iterative revealing）
 - 模型输出离散 score（Discrete Score）：对每个位置、每个词表 token 打分的
   [B, L, 50258] log-score；采样路径用 staggered score（跨时间步修正后的离散 score）
   乘以 transition kernel 得到转移权重 w
@@ -64,7 +66,9 @@
 
 - 任务设计：partial-reveal span-infilling——span 内只有部分 token 初始可见，其余
   为 [MASK]，模型重建全部 MASK 位置
-- 训练：SEDD-small + WikiText103，两 seed 各 2500 步，checkpoint_10200 为 RL 初始化点
+- 训练：SEDD-small + WikiText103，正式实验两 seed **每个训练 10200 steps**，在
+  1020 / 5100 / 10200 等 checkpoint 上跟踪任务性能与 compatibility（2500 只是
+  P1 early-dynamics 的观测点，不是正式训练长度）；checkpoint_10200 为 RL 初始化点
 - 结果：SFT 后 CPI_abs 0.3301 → 0.2871（−13%）、OrderGap 10.2246 → 8.7475（−14%），
   同时任务指标（masked NLL、token acc）明显改善
 - P1 早期动力学：CPI 衰减集中在 warmup 后期（250–750 窗口）的连续过程，非瞬时阶跃
@@ -102,12 +106,16 @@
 - LR probe（1e-6 / 3e-6 / 1e-5 × 150 步）→ formal LR=3e-6；500 步 formal run：
   任务指标近似平稳，CPI 0.2871 → 0.2852、OrderGap 8.7475 → 8.7442（CI 含 0）
 - K=1 vs K=4 匹配诊断（j_rng 隔离，100 步）：两组 reward / drift / zvg 几乎相同 →
-  单纯提高 timestep sampling density 不能改善 task learning
-- 诚实结论：当前 bottleneck 不在 K，而在 objective-level credit assignment
+  在当前设置、单 seed、100-step matched diagnostic 下，提高 K 没有带来一致的
+  task-learning improvement
+- 诚实结论：目前**没有证据表明**单纯提高 timestep sampling density 是主要瓶颈；
+  继续简单增加 K 不是最有价值的下一步，后续更值得检查 reward 与 objective-level
+  credit assignment
 
 **推荐图/表**：RL task 三指标曲线（step 0–500）+ K-ablation 对比表
 
-**一句话结论**：短程 RL 没有带来额外结构变化，且这一"无变化"是受控实验测出来的。
+**一句话结论**：短程 RL 没有带来额外结构变化，且这一"无变化"是受控实验测出来的；
+不把 null result 外推成"K 完全不重要"或"RL 天然不会改变 compatibility"。
 
 ---
 

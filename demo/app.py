@@ -110,8 +110,11 @@ def build_app():
             gr.Markdown(
                 "SEDD 从部分 Mask 的状态出发，通过多步反向扩散逐渐恢复 token。与自回归模型"
                 "（Autoregressive, AR）严格从左到右生成不同，dLLM 的 token 可以按照更灵活"
-                "的顺序被揭示。真实采样器共 128 个 reverse step；本页展示按 mask 数量变化"
-                "最大的节点选取的 ~10 个关键帧（含初始与 denoiser 收尾）。"
+                "的顺序被揭示——模型一次 forward 可以同时为多个 MASK 位置给出预测，但采样器"
+                "会在多个 reverse steps 中随机决定哪些位置在当前 step 被 reveal"
+                "（parallel prediction + iterative revealing），不是一次性把所有 token 定死。"
+                "真实采样器共 128 个 reverse step；本页展示按 mask 数量变化最大的节点选取的"
+                " ~10 个关键帧（含初始与 denoiser 收尾）。"
                 "<span style='background-color:#a5d6a7'>绿色</span> = 相对上一帧新揭示的 token，"
                 "灰色 [MASK] = 仍未揭示。σ<0.05 尾段保留完整采样展开（rollout），但策略梯度"
                 "（Policy Gradient）的 timestep 采样只在 σ≥0.05 safe region 进行（协议 v1.0 §25）。")

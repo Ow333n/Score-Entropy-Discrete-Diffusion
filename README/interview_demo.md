@@ -5,12 +5,12 @@
 
 ## 一、30 秒项目介绍（口语版）
 
-"这个项目是基于 SEDD 的离散扩散语言模型后训练研究。我先完成了 partial-reveal SFT，
-然后重点研究一个问题：dLLM 的 token 可以按不同顺序被揭示，那不同 reveal order 下模型
-的条件概率是否一致。我用 CPI 和 OrderGap 分别衡量局部和全局的顺序敏感性，发现 Vanilla
-SFT 会明显降低这两个指标。之后我又实现了基于 reverse diffusion rollout 的 RL-1，但当前
-短程 RL 的任务提升比较弱，compatibility 也基本保持不变。最后我进一步做了 K=1 和 K=4 的
-诊断实验，并把整个生成轨迹和研究结果做成了一个可交互 Demo。"
+"这个项目基于 SEDD 做离散扩散语言模型的后训练。我先实现了 partial-reveal SFT，然后
+重点研究 dLLM 一个特有的问题：不同 token reveal order 会不会导致不一致的概率判断。
+我用 CPI 和 OrderGap 分别衡量局部和全局的顺序敏感性，发现 Vanilla SFT 会明显降低
+这两个指标。之后我实现了 reverse-diffusion RL；当前 RL 的 task signal 较弱，
+compatibility 基本保持不变，我又通过 K=1 和 K=4 的控制实验进一步分析了它的瓶颈。
+最后整个过程做成了交互式 Demo。"
 
 ## 二、2 分钟 Demo 讲稿（顺序：Tab 2 → Tab 3 → Tab 4）
 
@@ -20,7 +20,9 @@ SFT 会明显降低这两个指标。之后我又实现了基于 reverse diffusi
 trajectory。模型不是像 GPT 一样严格从左往右生成，而是从包含 MASK 的状态开始，在多个
 reverse step 中逐渐恢复 token。"
 
-（拖动关键帧 slider，指出绿色高亮的"新揭示 token"与灰色 [MASK]，提到 σ 随 step 下降。）
+（拖动关键帧 slider：指出绿色高亮的"新揭示 token"与灰色 [MASK]；提到模型一次 forward
+可以同时给多个 MASK 位置预测，但采样器是多步逐位置揭示，即 parallel prediction +
+iterative revealing。）
 
 **Tab 3（Reveal Order 一致性分析）：**
 
@@ -35,68 +37,66 @@ CPI 衡量局部两-token 的不一致程度，OrderGap 衡量同一序列在不
 
 "我把这个现象沿着 Pretrained、SFT、RL 三个阶段进行了跟踪。SFT 之后 CPI 从 0.3301 降到
 0.2871，OrderGap 从 10.2246 降到 8.7475，说明顺序敏感性明显下降。后续 500-step RL 的
-task improvement 比较弱，同时 CPI 和 OrderGap 也基本不变，所以目前更准确的结论是：主要
-结构变化发生在 SFT 阶段，而当前 weak-learning RL 基本保持了 SFT 后的结构。"
+task improvement 比较弱，同时 CPI 和 OrderGap 也基本不变，所以目前更准确的结论是：
+在当前实验设置和训练 horizon 下，我们观察到的主要 compatibility restructuring 发生在
+SFT 阶段，而当前 weak-learning RL 基本保持了 SFT 后的结构。"
 
-## 三、5 分钟技术讲稿（中文口语，公式保留）
+## 三、5 分钟技术讲稿（6 模块，口语化）
 
-**1. 什么是 dLLM。**
-离散扩散语言模型把文本生成建模成一个离散去噪过程：前向过程按噪声 schedule σ 把 token
-逐位置替换成 [MASK]（absorbing 离散扩散），反向过程从 Mask 状态出发，一步步把 token
-"揭示"出来。
+**模块 1：任务背景——dLLM 与 SEDD（约 50 秒）**
 
-**2. 和 AR 的区别。**
-自回归模型严格从左到右、一个 token 一个 token 地生成；dLLM 每次反向 step 同时更新多个
-位置，token 揭示顺序不固定——这也是我这个项目研究的起点。
+"离散扩散语言模型和自回归模型最本质的区别在生成方式：GPT 严格从左往右、一个 token
+一个 token 地生成；dLLM 是从部分 Mask 的状态出发，通过多步反向扩散逐步恢复 token。
+在 absorbing discrete diffusion 里，前向过程会按噪声 schedule 逐步把 token 替换成
+MASK，反向过程就是学这个逆。SEDD 模型输出的是离散 score 的 log 表示——它不是普通
+AR logits，更接近两个离散状态之间的概率比 s_θ(x,y,t) ≈ p_t(y)/p_t(x)，用来比较
+MASK 位置上不同候选 token 的相对概率。模型一次 forward 可以同时为多个 MASK 位置给出
+预测，但实际 sampler 会在多个 reverse steps 中随机决定哪些位置在当前 step 被 reveal，
+所以是 parallel prediction + iterative revealing，不是一次性把所有 token 定死。"
 
-**3–4. Forward corruption 与 Reverse Diffusion。**
-前向 corruption 只发生在目标 span 内：每个位置以概率 1−e^(−σ) 被替换为 MASK。反向
-扩散就是学习这个过程的逆：给定当前状态 x_t 和 σ，输出每个位置跳到每个干净 token 的
-转移权重，采 128 步从 σ₀ 回到 σ≈0，最后一步用 denoiser 收尾。
+**模块 2：Partial-Reveal SFT（约 40 秒）**
 
-**5. 离散 score 是什么。**
-模型输出的是 [B, L, 50258] 的 log-score——对每个位置、每个词表 token 的打分。采样时
-exp 成真正的 score，再和 transition kernel 相乘得到转移权重 w；w 归一化后就是该位置的
-categorical 策略分布。
+"SFT 采用 partial-reveal span-infilling：目标 span 内部分 token 可见、部分被 Mask，
+loss 只计算当前被 Mask 的目标位置——注意，把 corruption 限制在 span 内是本项目的
+任务设计，不是 SEDD 的一般原理。正式实验跑了两个 seed，每个训练 10200 steps，并在
+1020 / 5100 / 10200 等多个 checkpoint 上跟踪任务性能和 compatibility。两个 seed 都
+复现了 CPI 与 OrderGap 的下降。"
 
-**6. 为什么会出现 Reveal Order。**
-因为反向过程每一步多个位置可以同时揭示，同一个目标序列可以由很多条不同的揭示顺序
-（reveal path）生成出来。如果模型是完美的一致性条件分布，先揭示谁不应该影响联合概率。
+**模块 3：Reveal Order 问题与两个指标（约 70 秒）**
 
-**7–8. CPI 与 OrderGap。**
-CPI 是局部指标：取两个 MASK 位置 a、b，比较"先 a 后 b"和"先 b 后 a"两种顺序下模型
-自评的条件概率，δ = log p(a|C) + log p(b|C,a) − log p(b|C) − log p(a|C,b)，
-CPI = E|δ|。OrderGap 是全局指标：同一序列在不同完整 reveal path 下的最大-最小似然差。
-两个指标一起刻画模型的顺序敏感性。
+"dLLM 的揭示顺序不固定，这引出一个问题：先揭示 A 再揭示 B，和先 B 再 A，模型自评的
+条件概率是否一致。局部指标 CPI 比较两种顺序：δ = log p(a|C) + log p(b|C,a) −
+log p(b|C) − log p(a|C,b)，CPI = E|δ|。全局指标 OrderGap 比较同一序列在不同完整
+reveal path 下的最大与最小路径似然差。两个指标互补：局部一致不保证全局一致。"
 
-**9. Partial-Reveal SFT。**
-SFT 任务设计成 partial-reveal span-infilling：span 内部分 token 初始可见，模型要重建
-全部 MASK 位置。训练两 seed、各 2500 步。结果是任务指标明显改善，同时 CPI 从 0.3301
-降到 0.2871、OrderGap 从 10.2246 降到 8.7475——顺序敏感性被系统性降低了。
+**模块 4：SFT 核心结果（约 60 秒）**
 
-**10–11. RL-1 与 M0 reward。**
-RL-1 是 pure on-policy REINFORCE：128 步 analytic rollout（no_grad），每条轨迹从
-safe-region（σ≥0.05）采样 K 个 timestep 做可微重算，advantage 用 G=4 组内相对优势。
-reward 用 M0 口径：只统计初始就被 Mask 的位置上的 exact-token 重建率——因为模型从来没
-被要求重建初始就可见的 token，把它们计入会稀释信号。
+"这是项目最干净的结论：Pretrained 上 CPI_abs = 0.3301、OrderGap = 10.2246；SFT 之后
+降到 0.2871 和 8.7475，下降约 13% 和 14%，两 seed 稳定复现。P1 early-dynamics 还观察
+到一个有意思的细节：全局 OrderGap 在 step 50 就已经小幅下降，而局部 CPI 的明显下降
+出现在 warmup 后期——局部和全局结构变化并不完全同步。这是观察加解释方向，不是证明。"
 
-**12–13. K=1 与 K=4 诊断。**
-K=1 每条轨迹只采样一个 timestep 做策略梯度，可能带来高方差。我用独立 j_rng 做了 K=1
-vs K=4 的匹配诊断：两组 rollout 随机流逐位相同，唯一变量是 K。结果是 100 步内两组的
-reward、参数漂移、zvg、compatibility 几乎相同——单纯提高 timestep sampling density
-不能改善 task learning。
+**模块 5：RL-1 与 K-ablation（约 90 秒）**
 
-**14. 主要结果。**
-一句话：Vanilla SFT 明显降低 reveal-order sensitivity；short-horizon RL-1 在任务学习
-信号较弱的情况下基本保持了 SFT 后的 compatibility 结构；K-ablation 说明瓶颈不在 K。
+"之后我实现了基于 SEDD reverse process 的 RL pipeline：128 步 analytic rollout，
+G=4 组内相对优势，M0-only exact-token reward。M0 就是 rollout 开始时真正被 Mask 的
+位置集合，只在 M0 上算 exact-match——初始已经可见的 token 相当于答案直接给了模型，
+算进去会产生'免费正确率'，稀释真正的重建信号。训练用 safe-region truncated policy
+gradient：σ≥0.05 的 step 才进入 timestep 采样，σ<0.05 的尾段保留完整 rollout 但不
+进 PG 目标。500 步 formal run 的结果：task 指标近似平稳，compatibility 无可检测变化。
+针对'是不是 K=1 的 timestep estimator 太稀疏'，我做了 K=1 vs K=4 的匹配诊断——用
+独立 RNG 保证两组 rollout 随机流逐位相同。结论是：在当前设置、单 seed、100 步下，
+提高 K 没有带来一致的 task-learning improvement，所以目前没有证据表明 timestep
+sampling density 是主要瓶颈，继续简单加 K 不是最有价值的下一步。"
 
-**15. Limitations。**
-单训练 seed；语义等价输出被 exact-token reward 判 0（真实案例已标注）；8GB WDDM 环境
-限制了规模；RL-1 没有产生明确 task-learning signal。
+**模块 6：Limitations、Future Work 与 Demo（约 50 秒）**
 
-**16. Future Work。**
-① 更强的 RL credit assignment（group-relative / PPO-style per-position objective）；
-② 多 seed + cross-task 验证 SFT attenuation 的普遍性；③ 更大模型与更多算力。
+"诚实的边界：单训练 seed，所有统计只表述 sample-level 不确定性；exact-token reward
+对语义等价输出会判 0，这个局限我在 Demo 里用真实案例标注了。后续三件事：RL-3 的
+per-position PPO-style objective 直接针对 credit assignment；多 seed + cross-task
+验证 SFT attenuation 的普遍性；更大模型看现象是否随规模保持。最后，整个研究——
+生成对比、反向扩散轨迹、Reveal Order 一致性、三阶段结果——我做成了一个无 GPU 依赖的
+交互式 Demo，所有数据都是正式 checkpoint 的真实 inference 导出，可以随时演示。"
 
 ## 四、指标解释（Demo 内图注口径）
 
@@ -104,7 +104,7 @@ reward、参数漂移、zvg、compatibility 几乎相同——单纯提高 times
 |---|---|
 | CPI | 局部两-token reveal-order 不一致程度：E\|δ\|，δ = log p(a\|C)+log p(b\|C,a)−log p(b\|C)−log p(a\|C,b) |
 | OrderGap | 完整 reveal path 的全局顺序敏感性：max_π Q_π − min_π Q_π |
-| M0 精确重建率 | 初始 Mask 位置上生成 token 与标准答案的 exact-match 比例（M0-only exact-token reward） |
+| M0 精确重建率 | rollout 初始 Mask 位置上生成 token 与标准答案的 exact-match 比例（M0-only exact-token reward） |
 | Formal64 NLL | 64 样本正式评估集的 masked NLL（冻结 corruption realization） |
 | 局部 Mask Token CE | compatibility 样本口径的逐样本 masked CE（与 Formal64 NLL 的评估样本集不同） |
 | sampled64 / greedy | 64 样本正式评估集上的采样 / 贪心（argmax）重建 reward |

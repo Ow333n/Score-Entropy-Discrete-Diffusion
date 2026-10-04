@@ -20,16 +20,20 @@
 - 任务指标：NLL 7.0490 → 7.0342，sampled64 0.2562 → 0.2619，greedy 0.3365 → 0.3380
   —— approximately stable / weak improvement signal（近似平稳 / 弱提升信号），
   不表述为显著提升。
-- 对应协议 §40 矩阵的 Scenario B：主要结构变化发生在 SFT 阶段；当前 weak-learning RL
-  基本保留 SFT 后形成的结构。
+- 对应协议 §40 矩阵的 Scenario B：**在当前实验设置和训练 horizon 下**，观察到的
+  主要 compatibility restructuring 发生在 SFT 阶段；当前 weak-learning RL 基本保留
+  SFT 后形成的结构。（不作跨设置、跨 horizon 的普遍结论。）
 
 ### F3. K=1 → K=4 不能带来一致的 task-learning 改善（诊断实验）
 
 - 匹配诊断（100 步、唯一变量 K、j_rng 隔离保证 rollout 随机流逐位相同）：
   K1 与 K4 的 reward 序列、参数漂移（1.61e-4 vs 1.62e-4）、zvg（同为 26/400）、
   compatibility 全部近似相同；K4 的 NLL/greedy 微幅优势与 sampled 的微幅劣势方向不一致。
-- 判定 Scenario B：单纯提高 timestep sampling density 不是当前 weak task signal 的瓶颈；
-  下一瓶颈候选在 objective-level credit assignment（reward / group-relative 机制）。
+- 判定 Scenario B：在当前 SEDD-small、当前 reward、当前 REINFORCE objective、单 seed、
+  100-step matched diagnostic 下，K 从 1 提高到 4 没有带来一致的 task-learning
+  improvement；**没有证据表明**单纯提高 timestep sampling density 是主要瓶颈，
+  也不外推成"K 完全不重要"或"K 已被排除"。下一检查方向候选：objective-level
+  credit assignment（reward / group-relative 机制）。
 
 ### F4. 工程可靠性结论（对本项目同样重要）
 
@@ -93,6 +97,7 @@
 ## 四、Future Work（统一口径，只保留三项）
 
 1. **更强的 RL credit assignment**：group-relative / PPO-style per-position objective
-   （当前 K-ablation 证据表明瓶颈不在 timestep sampling density）；
+   （当前 K-ablation 诊断没有发现提高 timestep sampling density 的一致改善，
+     故没有证据表明它是主要瓶颈）；
 2. **多 seed + cross-task 验证**：验证 SFT compatibility attenuation 是否具有普遍性；
 3. **更大模型与更多算力**：验证该现象是否随模型规模保持。
