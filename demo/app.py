@@ -15,7 +15,7 @@ import gradio as gr
 from data_loader import (load_examples, example_by_index, load_trajectory,
                          load_curves, load_vocab)
 from components import (tab1_html, tab2_html, tab3_pair_html, compat_cards_html,
-                        og_example_html, example_choices, PROV_FOOTER_ZH, PROV_FOOTER_EN,
+                        og_example_html, example_choices, PROV_FOOTER_ZH,
                         seq_html)
 from plots import plot_compat_chain, plot_rl_task
 
@@ -58,63 +58,66 @@ def build_app():
     og_choices = [c for c in choices if "cs3" in c or "cs5" in c]
     og_choices = [c.split(" ")[0][1:] for c in og_choices]
 
-    with gr.Blocks(title="Reveal-Order Compatibility in Masked Diffusion LMs") as app:
+    with gr.Blocks(title="离散扩散语言模型后训练与 Reveal Order 可视化") as app:
         gr.Markdown("""
-# Post-Training Reveal-Order Compatibility in Masked Diffusion Language Models
+# 离散扩散语言模型后训练与 Reveal Order 可视化
 
-**从 MASK 恢复、Reveal Order 到 SFT / RL 后的结构变化**
+**从 Masked Denoising、SFT 到 RL 的结构变化分析**
 
 这个 Demo 展示三个问题：
-1. masked diffusion language model 如何通过多步 reverse denoising 恢复文本；
-2. 为什么不同 token reveal order 会影响 conditional predictions；
-3. SFT 与 RL post-training 如何改变这种 reveal-order sensitivity。
+1. 离散扩散语言模型（Diffusion Language Model, dLLM）如何通过多步反向扩散（Reverse
+   Diffusion）从 Mask 状态恢复文本；
+2. 为什么不同 token 揭示顺序（Reveal Order）会影响条件预测；
+3. 监督微调（SFT）与强化学习（RL）后训练如何改变这种 reveal-order 敏感性。
 
-**当前核心结果**：Vanilla SFT 明显降低 CPI 与 OrderGap；RL-1 在 task learning signal
-较弱的情况下，基本保持 SFT 后的 compatibility structure。
+**当前核心结果**：Vanilla SFT 明显降低 CPI 与 OrderGap；RL-1 在任务学习信号较弱的情况下，
+基本保持 SFT 后的 compatibility 结构。
 """)
 
-        # ---------------- TAB 1: Generation ----------------
-        with gr.Tab("1. Masked Diffusion Generation"):
+        # ---------------- TAB 1: 生成结果对比 ----------------
+        with gr.Tab("1. 生成结果对比"):
             with gr.Row():
                 ex_sel1 = gr.Dropdown(choices=choices, value=choices[0],
-                                      label="Example（代表性 / 案例研究）")
-                show_ema = gr.Checkbox(label="显示 RL-500 EMA（secondary）", value=False)
+                                      label="样本（代表性 / 案例研究）")
+                show_ema = gr.Checkbox(label="显示 RL-500 EMA（辅助口径）", value=False)
             out1 = gr.HTML()
             ex_sel1.change(render_tab1, [ex_sel1, show_ema], out1)
             show_ema.change(render_tab1, [ex_sel1, show_ema], out1)
             app.load(render_tab1, [ex_sel1, show_ema], out1)
             gr.Markdown(
-                "说明：三阶段 = Pretrained（louaaron/sedd-small）/ SFT（formal s1 "
+                "说明：三阶段 = 预训练模型（louaaron/sedd-small）/ SFT（formal s1 "
                 "checkpoint_10200 EMA）/ RL-500（formal pilot RAW，EMA 可选）。"
-                "**Local masked-token CE** 标注为 compatibility sample 口径，"
-                "**不是** Formal64 NLL（两者 evaluation population 不同）。")
+                "**局部 Mask Token CE** 标注为 compatibility sample 口径，"
+                "**不是** Formal64 NLL（两者评估样本集不同）。")
 
-        # ---------------- TAB 2: Trajectory ----------------
-        with gr.Tab("2. Reveal Trajectory Viewer"):
+        # ---------------- TAB 2: 反向扩散轨迹 ----------------
+        with gr.Tab("2. 反向扩散轨迹"):
             with gr.Row():
                 ex_sel2 = gr.Dropdown(choices=choices, value=choices[0],
-                                      label="Example")
+                                      label="样本")
                 stage_sel = gr.Dropdown(
-                    choices=["Pretrained", "SFT (s1-10200 EMA)", "RL-500 (RAW)",
-                             "RL-500 (EMA, secondary)"],
-                    value="RL-500 (RAW)", label="Stage")
+                    choices=["预训练模型", "SFT (s1-10200 EMA)", "RL-500 (RAW)",
+                             "RL-500 (EMA, 辅助口径)"],
+                    value="RL-500 (RAW)", label="阶段")
                 mode_sel = gr.Radio(choices=["sampled", "greedy"], value="greedy",
-                                    label="Decoding mode")
+                                    label="解码方式")
             kf_slider = gr.Slider(0, 9, step=1, value=0,
-                                  label="Keyframe（按 |Δmask_count| 选取的 ~10 个关键帧）")
+                                  label="关键帧（按 mask 数量变化最大的节点选取 ~10 帧）")
             out2 = gr.HTML()
             for c in (ex_sel2, stage_sel, mode_sel, kf_slider):
                 c.change(render_tab2, [ex_sel2, stage_sel, mode_sel, kf_slider], out2)
             app.load(render_tab2, [ex_sel2, stage_sel, mode_sel, kf_slider], out2)
             gr.Markdown(
-                "真实 sampler 为 128 reverse steps；本页展示按 mask-count 变化最大的 "
-                "节点选取的 ~10 个关键帧（含初始与 denoiser 收尾）。"
-                "<span style='background-color:#a5d6a7'>绿色</span> = 相对上一帧新揭示的位置，"
-                "灰色 [MASK] = 仍未揭示。σ<0.05 尾段保留完整 rollout，但 PG timestep 采样"
-                "（K=1）只在 σ≥0.05 safe region 进行（协议 v1.0 §25）。")
+                "SEDD 从部分 Mask 的状态出发，通过多步反向扩散逐渐恢复 token。与自回归模型"
+                "（Autoregressive, AR）严格从左到右生成不同，dLLM 的 token 可以按照更灵活"
+                "的顺序被揭示。真实采样器共 128 个 reverse step；本页展示按 mask 数量变化"
+                "最大的节点选取的 ~10 个关键帧（含初始与 denoiser 收尾）。"
+                "<span style='background-color:#a5d6a7'>绿色</span> = 相对上一帧新揭示的 token，"
+                "灰色 [MASK] = 仍未揭示。σ<0.05 尾段保留完整采样展开（rollout），但策略梯度"
+                "（Policy Gradient）的 timestep 采样只在 σ≥0.05 safe region 进行（协议 v1.0 §25）。")
 
-        # ---------------- TAB 3: Compatibility Lab ----------------
-        with gr.Tab("3. Reveal Order / Compatibility Lab"):
+        # ---------------- TAB 3: Reveal Order 一致性分析 ----------------
+        with gr.Tab("3. Reveal Order 一致性分析"):
             ex_sel3 = gr.Dropdown(choices=choices, value=choices[0],
                                   label="Pair（来自 frozen manifest）")
             out3 = gr.HTML()
@@ -123,31 +126,30 @@ def build_app():
             cards3 = gr.HTML(compat_cards_html())
             gr.Markdown("### OrderGap 路径示例（Q_by_path，直接取自 formal 结果）")
             og_sel = gr.Dropdown(choices=og_choices, value=og_choices[0],
-                                 label="Sample（cs3 unusual sensitivity / cs5 RL unchanged）")
+                                 label="样本（cs3 高顺序敏感性 / cs5 RL 近似不变）")
             out3b = gr.HTML()
             og_sel.change(render_og, [og_sel], out3b)
             app.load(render_og, [og_sel], out3b)
             gr.Markdown(PROV_FOOTER_ZH)
-            gr.Markdown(PROV_FOOTER_EN)
 
-        # ---------------- TAB 4: Dashboard ----------------
-        with gr.Tab("4. Training Story Dashboard"):
+        # ---------------- TAB 4: 训练与研究结果 ----------------
+        with gr.Tab("4. 训练与研究结果"):
             gr.Markdown("""
-### Pretrained → Vanilla SFT → RL-1
+### 预训练模型 → Vanilla SFT → RL-1
 
 | 阶段 | CPI_abs | OrderGap_raw |
 |---|---|---|
-| Pretrained | 0.3301 | 10.2246 |
-| SFT (s1-10200 EMA) | 0.2871 | 8.7475 |
-| RL-500 (RAW) | 0.2852 | 8.7442 |
+| 预训练模型 | 0.3301 | 10.2246 |
+| SFT（s1-10200 EMA） | 0.2871 | 8.7475 |
+| RL-500（RAW） | 0.2852 | 8.7442 |
 
-**SFT: clear attenuation** · **RL-1: no detectable additional change**
+**SFT：reveal-order sensitivity 明显下降** · **RL-1：无可检测的进一步结构变化**
 
 （数值为 current-code harmonized 口径；历史旧代码值见 provenance 说明。）
 """)
-            gr.Plot(plot_compat_chain(CURVES), label="Compatibility 三阶段（分图，不混量纲）")
+            gr.Plot(plot_compat_chain(CURVES), label="三阶段 Compatibility（分图，不混量纲）")
             gr.Markdown("""
-### RL task metrics（Formal64, step 0 → 500, RAW）
+### RL 任务指标（Formal64，step 0 → 500，RAW）
 
 | step | Formal64 NLL | sampled64 reward | greedy reward |
 |---|---|---|---|
@@ -157,16 +159,17 @@ def build_app():
 | 250 | 7.0477 | 0.2579 | 0.3277 |
 | 500 | 7.0342 | 0.2619 | 0.3380 |
 
-**approximately stable / weak improvement signal**（禁止表述为 significant improvement）。
+**approximately stable / weak improvement signal（近似平稳 / 弱提升信号）**
+——不表述为 significant improvement（显著提升）。
 """)
-            gr.Plot(plot_rl_task(CURVES), label="RL task metrics vs step（分图）")
+            gr.Plot(plot_rl_task(CURVES), label="RL 任务指标随 step 变化（分图）")
             gr.Markdown("""
-### Scientific interpretation
+### 科学解读
 
-- **SFT**: compatibility attenuation（CPI 0.330→0.287，OrderGap 10.22→8.75）
-- **RL-1**: compatibility preserved under weak-learning RL —— 当前 pure on-policy
-  REINFORCE + K=1 的 short-horizon RL 没有产生明确 task-learning signal，因此
-  compatibility 也没有出现可检测的进一步变化（paired bootstrap CI 含 0）。
+- **SFT**：compatibility attenuation（CPI 0.330→0.287，OrderGap 10.22→8.75）
+- **RL-1**：在任务学习信号较弱的情况下，compatibility 结构基本保持不变 —— 当前 pure
+  on-policy REINFORCE + K=1 的 short-horizon RL 没有产生明确 task-learning signal，
+  因此 compatibility 也没有出现可检测的进一步变化（paired bootstrap CI 含 0）。
 """)
             gr.Markdown(PROV_FOOTER_ZH)
 

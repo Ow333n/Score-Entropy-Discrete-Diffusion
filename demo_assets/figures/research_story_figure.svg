@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="760" viewBox="0 0 900 760" font-family="'Noto Sans SC','PingFang SC','Microsoft YaHei',sans-serif">
+  <rect width="900" height="760" fill="#ffffff"/>
+  <text x="450" y="38" text-anchor="middle" font-size="20" font-weight="bold" fill="#222">研究故事：离散扩散语言模型后训练与 Reveal-Order Compatibility</text>
+  <text x="450" y="60" text-anchor="middle" font-size="13" fill="#666">研究问题：后训练过程会如何改变 dLLM 对 token 揭示顺序（Reveal Order）的敏感性？</text>
+
+  <!-- 节点 -->
+  <g font-size="14">
+    <rect x="300" y="90" width="300" height="44" rx="8" fill="#4C72B0" opacity="0.15" stroke="#4C72B0"/>
+    <text x="450" y="117" text-anchor="middle" fill="#222" font-weight="bold">SEDD 预训练模型（louaaron/sedd-small）</text>
+
+    <rect x="300" y="165" width="300" height="44" rx="8" fill="#DD8452" opacity="0.15" stroke="#DD8452"/>
+    <text x="450" y="192" text-anchor="middle" fill="#222" font-weight="bold">Partial-Reveal SFT（span-infilling，两 seed）</text>
+
+    <rect x="300" y="240" width="300" height="44" rx="8" fill="#55A868" opacity="0.15" stroke="#55A868"/>
+    <text x="450" y="267" text-anchor="middle" fill="#222" font-weight="bold">Reveal-Order Compatibility 分析</text>
+
+    <rect x="300" y="315" width="300" height="44" rx="8" fill="#9372B2" opacity="0.15" stroke="#9372B2"/>
+    <text x="450" y="342" text-anchor="middle" fill="#222" font-weight="bold">RL-1 强化学习探索（safe-region / truncated PG）</text>
+
+    <rect x="300" y="390" width="300" height="44" rx="8" fill="#C44E52" opacity="0.15" stroke="#C44E52"/>
+    <text x="450" y="417" text-anchor="middle" fill="#222" font-weight="bold">K=1 vs K=4 诊断实验（匹配对照）</text>
+
+    <rect x="300" y="465" width="300" height="44" rx="8" fill="#8172B3" opacity="0.18" stroke="#8172B3"/>
+    <text x="450" y="492" text-anchor="middle" fill="#222" font-weight="bold">交互式 Demo（生成 / 轨迹 / 一致性 / 结果）</text>
+  </g>
+
+  <!-- 箭头 -->
+  <g stroke="#999" stroke-width="2" fill="#999">
+    <line x1="450" y1="134" x2="450" y2="160"/><polygon points="446,160 454,160 450,168"/>
+    <line x1="450" y1="209" x2="450" y2="235"/><polygon points="446,235 454,235 450,243"/>
+    <line x1="450" y1="284" x2="450" y2="310"/><polygon points="446,310 454,310 450,318"/>
+    <line x1="450" y1="359" x2="450" y2="385"/><polygon points="446,385 454,385 450,393"/>
+    <line x1="450" y1="434" x2="450" y2="460"/><polygon points="446,460 454,460 450,468"/>
+  </g>
+
+  <!-- 右侧注释 -->
+  <g font-size="13" fill="#333">
+    <text x="630" y="105">反向扩散 + 离散 score</text>
+    <text x="630" y="123">（Discrete Score）</text>
+    <text x="630" y="180">任务能力明显改善</text>
+    <text x="630" y="198">CPI / OrderGap 下降（见下）</text>
+    <text x="630" y="255">CPI：局部两-token 揭示顺序不一致</text>
+    <text x="630" y="273">OrderGap：完整 reveal path 全局顺序敏感性</text>
+    <text x="630" y="330">pure on-policy REINFORCE + K=1</text>
+    <text x="630" y="348">M0-only exact-token reward</text>
+    <text x="630" y="405">唯一变量 K，j_rng 隔离</text>
+    <text x="630" y="423">rollout 随机流逐位相同</text>
+    <text x="630" y="480">全预计算、无 GPU 可运行</text>
+  </g>
+
+  <!-- 核心结果面板 -->
+  <g font-size="13">
+    <rect x="80" y="540" width="740" height="200" rx="10" fill="#f7f7f7" stroke="#ccc"/>
+    <text x="450" y="566" text-anchor="middle" font-weight="bold" font-size="15" fill="#222">核心结果（current-code harmonized 口径）</text>
+    <text x="130" y="598">预训练：</text>
+    <text x="230" y="598" font-family="monospace">CPI_abs = 0.3301，OrderGap = 10.2246</text>
+    <text x="130" y="622">SFT 后：</text>
+    <text x="230" y="622" font-family="monospace">CPI_abs = 0.2871，OrderGap = 8.7475</text>
+    <text x="570" y="622" fill="#c44">→ reveal-order sensitivity 明显下降</text>
+    <text x="130" y="646">RL-500：</text>
+    <text x="230" y="646" font-family="monospace">CPI_abs = 0.2852，OrderGap = 8.7442</text>
+    <text x="570" y="646" fill="#c44">→ weak-learning RL 下无可检测的进一步结构变化</text>
+    <text x="130" y="670">K-ablation：</text>
+    <text x="230" y="670" font-family="monospace">K=1 → K=4（100 步匹配诊断）</text>
+    <text x="570" y="670" fill="#c44">→ 没有观察到一致的 task-learning 改善</text>
+    <text x="130" y="700" fill="#555">结论：主要结构变化发生在 SFT 阶段；后续应关注 objective-level credit assignment，而非继续简单增加 K。</text>
+    <text x="130" y="724" fill="#888" font-size="11">注：历史 early-eval 数值（0.3281 / 10.2445 / 0.2891 / 8.7557）保留于 provenance 记录（protocol/errata_v4.2_eval_provenance.md），不改变定性结论。</text>
+  </g>
+</svg>
