@@ -1,0 +1,23 @@
+{
+  "sample_id": "s442",
+  "manifest_index": 442,
+  "context_pair": {
+    "i": 129,
+    "j": 131,
+    "a": 262,
+    "b": 7057,
+    "sigma": 1.5
+  },
+  "stage": "rl_raw",
+  "logp_a_C": -2.8125,
+  "logp_b_Ca": -8.1875,
+  "logp_b_C": -9.0,
+  "logp_a_Cb": -1.0234375,
+  "sum_AB": -11.0,
+  "sum_BA": -10.0,
+  "delta": -0.9765625,
+  "delta_formal": -0.9765625,
+  "delta_match": true,
+  "diff": 0.0,
+  "historical_delta_if_available": null
+}

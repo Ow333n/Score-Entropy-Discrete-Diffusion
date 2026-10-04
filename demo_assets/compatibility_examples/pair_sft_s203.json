@@ -1,0 +1,23 @@
+{
+  "sample_id": "s203",
+  "manifest_index": 203,
+  "context_pair": {
+    "i": 108,
+    "j": 103,
+    "a": 2750,
+    "b": 1772,
+    "sigma": 3.0
+  },
+  "stage": "sft",
+  "logp_a_C": -10.5625,
+  "logp_b_Ca": -6.46875,
+  "logp_b_C": -6.28125,
+  "logp_a_Cb": -10.75,
+  "sum_AB": -17.0,
+  "sum_BA": -17.0,
+  "delta": 0.0,
+  "delta_formal": 0.0,
+  "delta_match": true,
+  "diff": 0.0,
+  "historical_delta_if_available": 0.0
+}

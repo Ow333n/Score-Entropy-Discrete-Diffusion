@@ -1,0 +1,42 @@
+{
+  "sample_id": "s064",
+  "manifest_index": 64,
+  "stages": {
+    "pretrained": {
+      "q_by_path": {
+        "l2r": -115.27940368652344,
+        "r2l": -117.30206298828125,
+        "random_0": -121.69151306152344,
+        "random_1": -118.65652465820312,
+        "random_2": -120.89175415039062,
+        "confidence": -115.5574951171875
+      },
+      "order_gap": 6.412109375,
+      "provenance": "demo_assets/metrics/harmonized/pretrained_og_current.json"
+    },
+    "sft": {
+      "q_by_path": {
+        "l2r": -108.49208068847656,
+        "r2l": -108.36320495605469,
+        "random_0": -110.08517456054688,
+        "random_1": -109.28341674804688,
+        "random_2": -111.08837890625,
+        "confidence": -102.789306640625
+      },
+      "order_gap": 8.299072265625,
+      "provenance": "demo_assets/metrics/harmonized/sft_og_current.json"
+    },
+    "rl_raw": {
+      "q_by_path": {
+        "l2r": -108.26100158691406,
+        "r2l": -108.62937927246094,
+        "random_0": -110.16056823730469,
+        "random_1": -109.26277160644531,
+        "random_2": -110.91264343261719,
+        "confidence": -102.7322998046875
+      },
+      "order_gap": 8.180343627929688,
+      "provenance": "demo_assets/metrics/harmonized/rl500_og_current.json"
+    }
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "sample_id": "s158",
+  "manifest_index": 158,
+  "context_pair": {
+    "i": 38,
+    "j": 50,
+    "a": 13232,
+    "b": 11278,
+    "sigma": 3.0
+  },
+  "stage": "sft",
+  "logp_a_C": -9.9375,
+  "logp_b_Ca": -8.6875,
+  "logp_b_C": -8.875,
+  "logp_a_Cb": -9.875,
+  "sum_AB": -18.625,
+  "sum_BA": -18.75,
+  "delta": 0.125,
+  "delta_formal": 0.125,
+  "delta_match": true,
+  "diff": 0.0,
+  "historical_delta_if_available": 0.125
+}

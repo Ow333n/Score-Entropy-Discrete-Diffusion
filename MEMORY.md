@@ -327,4 +327,6 @@
   - drift @500：raw 2.99e-4 / ema 2.75e-4（vs 150 步 1.54e-4，亚线性积累符合梯度抵消）
   - 产物全部验证：checkpoint_step500（model+ema+opt+scaler）、eval snapshots 50/100/250/500、5 个 eval JSON、metadata（protocol v1.0-rl1/allocator/git 全记录）
   - **⚠️ dxg 异常披露**：kernel 71402–71514s（≈22:10–22:12，step ~410–450 窗口）出现 **27 条 dxgkio_create_allocation EOVERFLOW(-75)**，112 秒窗口后自行消失；运行未受影响（无 crash/NaN/OOM，全部产物在窗口之后正常写出并验证通过）；疑似与并发 GPU 负载有关（用户游戏？待确认）——按 launch 规则属"dxg anomaly 但未造成 failure"，运行已自然完成
-- [ ] 待用户 go-ahead：post-run CPI/OrderGap（snapshots 50/100/250/500 × raw+ema，8+8 次 ≈ 50 min，需 GPU 空闲时跑）→ 统一科学判读（§40 matrix）→ 不自动进入下一阶段
+- [x] **post-run CPI/OrderGap 完成**（16 evals，commit 5be2fdf，dxg 无新增）：RAW CPI_abs 0.2871→0.2852、OG_raw 8.7475→8.7442 全程平（±0.003/±0.037 噪声级）；paired bootstrap（500 samples，B=10000）ΔCPI_abs −0.0016 CI[−0.0072,+0.0037]、ΔOG_raw −0.0033 CI[−0.032,+0.026] —— **CI 均含 0，无 sample-level 可检测变化**；sigma/pair_distance buckets 无系统性变化；§40 矩阵 → 最接近 **Scenario B**（Task≈stable + CPI≈stable + OG≈stable；候选解读：SFT 是主要 compatibility restructuring 阶段，short-horizon RL 基本保留 SFT 后结构）
+- [x] deviation record：protocol/deviation_formal_rlpilot_dxg.md（27×EOVERFLOW @step410–450 112s 窗口，无 observed model-state corruption，root cause 未确认）
+- [x] 科学汇报已交付（15 项）；**已停止，等 scientific review**：RL-2/GRPO、第二 seed、P2、semantic 均不动；RL-1 task signal 弱 → 优先按 estimator/credit-assignment 效率解释（纯 on-policy REINFORCE + K=1），review 后再定

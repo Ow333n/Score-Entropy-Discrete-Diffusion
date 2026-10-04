@@ -1,0 +1,23 @@
+{
+  "sample_id": "s375",
+  "manifest_index": 375,
+  "context_pair": {
+    "i": 128,
+    "j": 124,
+    "a": 2647,
+    "b": 383,
+    "sigma": 0.5
+  },
+  "stage": "sft",
+  "logp_a_C": -4.5,
+  "logp_b_Ca": -0.048828125,
+  "logp_b_C": -0.08056640625,
+  "logp_a_Cb": -4.1875,
+  "sum_AB": -4.5625,
+  "sum_BA": -4.28125,
+  "delta": -0.28125,
+  "delta_formal": -0.28125,
+  "delta_match": true,
+  "diff": 0.0,
+  "historical_delta_if_available": -0.34375
+}

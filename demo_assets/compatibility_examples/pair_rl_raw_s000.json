@@ -1,0 +1,23 @@
+{
+  "sample_id": "s000",
+  "manifest_index": 0,
+  "context_pair": {
+    "i": 157,
+    "j": 155,
+    "a": 3576,
+    "b": 19239,
+    "sigma": 0.5
+  },
+  "stage": "rl_raw",
+  "logp_a_C": -0.6796875,
+  "logp_b_Ca": -0.6015625,
+  "logp_b_C": -0.9296875,
+  "logp_a_Cb": -0.63671875,
+  "sum_AB": -1.28125,
+  "sum_BA": -1.5625,
+  "delta": 0.28515625,
+  "delta_formal": 0.28515625,
+  "delta_match": true,
+  "diff": 0.0,
+  "historical_delta_if_available": null
+}
