@@ -10,6 +10,82 @@ def esc(s):
     return (s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;"))
 
 
+def esc_attr(s):
+    return esc(s).replace('"', "&quot;")
+
+
+MASK_TOKEN_ID = 50257
+
+
+def _tok_text(t, vocab):
+    """token id → 展示文本（vocab_decode.json 已预解码，无内部 BPE marker）。"""
+    s = vocab.get(str(t))
+    if s is None:
+        return "[MASK]" if t == MASK_TOKEN_ID else "<?>"
+    return s
+
+
+def _tok_html(t, vocab, cls=None, title=None, strip_leading_space=False):
+    text = esc(_tok_text(t, vocab)).replace("\n", "<br>")
+    if strip_leading_space and text.startswith(" "):
+        text = text[1:]  # GPT-2 decode 约定：首 token 前导空格不显示
+    if cls:
+        tattr = f' title="{esc_attr(title)}"' if title else ""
+        return f'<span class="{cls}"{tattr}>{text}</span>'
+    return text
+
+
+def gt_seq_html(tokens, m0set, vocab):
+    """Ground Truth 序列：M0 位置蓝色高亮（初始需要重建的位置）。"""
+    return "".join(_tok_html(t, vocab, "m0-token" if p in m0set else None,
+                             strip_leading_space=(p == 0))
+                   for p, t in enumerate(tokens))
+
+
+def initial_seq_html(gt_tokens, m0set, vocab):
+    """初始 Mask 状态：M0 位置渲染为紫色 MASK badge，其余为 GT token。"""
+    return "".join('<span class="mask-badge">[MASK]</span>' if p in m0set
+                   else _tok_html(t, vocab, strip_leading_space=(p == 0))
+                   for p, t in enumerate(gt_tokens))
+
+
+def pred_seq_html(final_tokens, gt_tokens, m0set, vocab):
+    """模型输出序列（token-level exact comparison）：
+    M0 位置：绿 = pred_token_id == gt_token_id，红 = 不等；
+    非 M0 位置：橙 = 与 GT 不一致（理论上不应发生，逻辑保留）。"""
+    out = []
+    for p, t in enumerate(final_tokens):
+        if p in m0set:
+            if t == gt_tokens[p]:
+                out.append(_tok_html(t, vocab, "correct-token",
+                                     strip_leading_space=(p == 0)))
+            else:
+                out.append(_tok_html(
+                    t, vocab, "wrong-token",
+                    f"GT: {_tok_text(gt_tokens[p], vocab)} | Pred: {_tok_text(t, vocab)}",
+                    strip_leading_space=(p == 0)))
+        else:
+            if t != gt_tokens[p]:
+                out.append(_tok_html(
+                    t, vocab, "changed-token",
+                    f"非 M0 位置变化 GT: {_tok_text(gt_tokens[p], vocab)} | Pred: {_tok_text(t, vocab)}",
+                    strip_leading_space=(p == 0)))
+            else:
+                out.append(_tok_html(t, vocab, strip_leading_space=(p == 0)))
+    return "".join(out)
+
+
+LEGEND_HTML = """
+<div class="gt-card" style="padding:8px 10px;">
+  <span class="m0-token">蓝：初始 M0（需重建）</span>
+  <span class="mask-badge">紫：MASK</span>
+  <span class="correct-token">绿：M0 重建正确</span>
+  <span class="wrong-token">红：M0 重建错误（悬停看 GT/Pred）</span>
+  <span class="changed-token">橙：非 M0 位置变化</span>
+</div>
+"""
+
+
 def seq_html(tokens, mask_positions=None, newly=None, vocab=None):
     """tokens → 带高亮的 HTML。mask 灰色；新揭示位置绿色背景。"""
     from data_loader import decode_tokens
@@ -37,8 +113,12 @@ def example_choices():
 
 
 def tab1_html(ex, show_ema, vocab):
-    from data_loader import load_trajectory, load_harmonized
+    from data_loader import (load_trajectory, load_harmonized,
+                             load_manifest_tokens)
     traj = load_trajectory(ex["manifest_index"])
+    mt = load_manifest_tokens()[ex["manifest_index"]]
+    gt_tokens = mt["x0"]
+    m0set = set(mt["initial_masked_positions"])
     stages = [("pretrained", "预训练模型"),
               ("sft", "SFT（s1-10200 EMA）"),
               ("rl_raw", "RL-500（RAW，主口径）")]
@@ -60,19 +140,20 @@ def tab1_html(ex, show_ema, vocab):
 <div class="gt-card">
   <b style="font-size:15px;">{label}</b><br>
   <b>Sampled 输出</b>（M0 精确重建率 {sv['sampled']['m0_reward']:.3f}）：<br>
-  <span style="font-family:monospace;">{esc(sv['sampled']['final_text'])}</span><br><br>
+  <div class="token-seq">{pred_seq_html(sv['sampled']['final_tokens'], gt_tokens, m0set, vocab)}</div><br>
   <b>Greedy 输出</b>（M0 精确重建率 {sv['greedy']['m0_reward']:.3f}）：<br>
-  <span style="font-family:monospace;">{esc(sv['greedy']['final_text'])}</span><br><br>
+  <div class="token-seq">{pred_seq_html(sv['greedy']['final_tokens'], gt_tokens, m0set, vocab)}</div><br>
   {ce_html}
 </div>""")
     span_info = (f"目标 span：[{ex['span_start']}, {ex['span_end']}) · σ₀={ex['sigma']} · "
-                 f"|M0|={len(ex['m0_positions'])}")
-    html = f"""
+                 f"|M0|={len(m0set)} · 高亮为 token-level exact comparison"
+                 f"（pred_token_id == gt_token_id 才算正确）")
+    html = LEGEND_HTML + f"""
 <div class="gt-card">
-  <b>标准答案</b>：<br>
-  <span style="font-family:monospace;">{esc(ex['gt_text'])}</span><br><br>
-  <b>初始 Mask 状态</b>：<br>
-  <span style="font-family:monospace;">{esc(ex['initial_state_text'])}</span><br>
+  <b>标准答案</b>（Ground Truth）：<br>
+  <div class="token-seq">{gt_seq_html(gt_tokens, m0set, vocab)}</div><br>
+  <b>初始 Mask 状态</b>（Initial Mask）：<br>
+  <div class="token-seq">{initial_seq_html(gt_tokens, m0set, vocab)}</div><br>
   <small>{span_info}</small>
 </div>
 <div style="display:flex;gap:6px;flex-wrap:wrap;">{''.join(cols)}</div>

@@ -50,6 +50,28 @@ def load_trajectory(idx):
     return _load(f"trajectories/traj_s{idx:03d}.json")
 
 
+_manifest_cache = None
+
+
+def load_manifest_tokens():
+    """解析 frozen manifest，返回 {sample_id: {"x0": [gt token ids],
+    "initial_state": [...], "initial_masked_positions": [...]}}（纯数据，不跑模型）。"""
+    global _manifest_cache
+    if _manifest_cache is None:
+        path = os.path.join(ROOT, "manifests", "regime_a_eval_v1.jsonl")
+        out = {}
+        with open(path) as f:
+            for line in f:
+                d = json.loads(line)
+                out[d["sample_id"]] = {
+                    "x0": d["x0"],
+                    "initial_state": d["initial_state"],
+                    "initial_masked_positions": d["initial_masked_positions"],
+                }
+        _manifest_cache = out
+    return _manifest_cache
+
+
 def load_pair(stage, idx):
     return _load(f"compatibility_examples/pair_{stage}_s{idx:03d}.json")
 

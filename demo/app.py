@@ -74,6 +74,49 @@ def build_app():
   margin: 8px 4px;
   border: 1px solid var(--border-color-accent);
 }
+.token-seq {
+  font-family: monospace;
+  font-size: 14px;
+  line-height: 2.0;
+  word-break: break-word;
+}
+/* token-level 高亮（Tab 1 差异可视化，深浅主题下均为白字彩底，颜色恒定） */
+.m0-token {
+  background: #2563eb;
+  color: #fff;
+  border-radius: 3px;
+  padding: 0 2px;
+}
+.mask-badge {
+  background: #7c3aed;
+  color: #fff;
+  font-weight: 700;
+  border-radius: 4px;
+  padding: 0 4px;
+}
+.correct-token {
+  background: #16a34a;
+  color: #fff;
+  border-radius: 3px;
+  padding: 0 2px;
+}
+.wrong-token {
+  background: #dc2626;
+  color: #fff;
+  border-radius: 3px;
+  padding: 0 2px;
+  cursor: help;
+}
+.changed-token {
+  background: #d97706;
+  color: #fff;
+  border-radius: 3px;
+  padding: 0 2px;
+  cursor: help;
+}
+.m0-token, .mask-badge, .correct-token, .wrong-token, .changed-token {
+  box-decoration-break: clone;
+}
 """
 
     with gr.Blocks(title="离散扩散语言模型后训练与 Reveal Order 可视化",
