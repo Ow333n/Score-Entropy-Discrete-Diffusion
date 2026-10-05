@@ -15,8 +15,8 @@ import gradio as gr
 from data_loader import (load_examples, example_by_index, load_trajectory,
                          load_curves, load_vocab)
 from components import (tab1_html, tab2_html, tab3_pair_html, compat_cards_html,
-                        og_example_html, example_choices, PROV_FOOTER_ZH,
-                        seq_html)
+                        og_example_html, example_choices, default_tab1_choice,
+                        PROV_FOOTER_ZH, seq_html)
 from plots import plot_compat_chain, plot_rl_task
 
 VOCAB = load_vocab()
@@ -139,7 +139,7 @@ def build_app():
         # ---------------- TAB 1: 生成结果对比 ----------------
         with gr.Tab("1. 生成结果对比"):
             with gr.Row():
-                ex_sel1 = gr.Dropdown(choices=choices, value=choices[0],
+                ex_sel1 = gr.Dropdown(choices=choices, value=default_tab1_choice(),
                                       label="样本（代表性 / 案例研究）")
                 show_ema = gr.Checkbox(label="显示 RL-500 EMA（辅助口径）", value=False)
             out1 = gr.HTML()

@@ -112,6 +112,20 @@ def example_choices():
     return out
 
 
+# Tab 1 默认展示样本（frozen demo examples 之一）：
+# s105 混合对错（10 绿 8 红）、错误以完整词为主、三阶段输出差异肉眼可见、
+# 文本最短（2 个 EOT 边界）。s375 仍保留在列表中作为 tokenizer/subword
+# 局限案例研究。只影响 Tab 1 默认选中，不触碰任何数据与结果。
+DEFAULT_TAB1_INDEX = 105
+
+
+def default_tab1_choice():
+    for c in example_choices():
+        if c.startswith(f"s{DEFAULT_TAB1_INDEX:03d} "):
+            return c
+    return example_choices()[0]
+
+
 def tab1_html(ex, show_ema, vocab):
     from data_loader import (load_trajectory, load_harmonized,
                              load_manifest_tokens)
