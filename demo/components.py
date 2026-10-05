@@ -18,7 +18,7 @@ def seq_html(tokens, mask_positions=None, newly=None, vocab=None):
     out = []
     for p, t in enumerate(tokens):
         if p in nset:
-            out.append(f'<span style="background-color:#a5d6a7;border-radius:3px;padding:0 1px;">'
+            out.append(f'<span style="background-color:#a5d6a7;color:#111;border-radius:3px;padding:0 1px;">'
                        f'{esc(decode_tokens([t], mask_positions=None, vocab=vocab))}</span>')
         elif p in mset:
             out.append('<span style="color:#9e9e9e;">[MASK]</span>')
@@ -68,7 +68,7 @@ def tab1_html(ex, show_ema, vocab):
     span_info = (f"目标 span：[{ex['span_start']}, {ex['span_end']}) · σ₀={ex['sigma']} · "
                  f"|M0|={len(ex['m0_positions'])}")
     html = f"""
-<div style="border:1px solid #bbb;border-radius:6px;padding:10px;margin:4px;background:#fafafa;">
+<div style="border:1px solid #bbb;border-radius:6px;padding:10px;margin:4px;background:#fafafa;color:#111;">
   <b>标准答案</b>：<br>
   <span style="font-family:monospace;">{esc(ex['gt_text'])}</span><br><br>
   <b>初始 Mask 状态</b>：<br>
@@ -81,7 +81,7 @@ def tab1_html(ex, show_ema, vocab):
         ann = ex["semantic_annotation"]
         judgements = "<br>".join(f"&nbsp;&nbsp;{k}：<b>{v}</b>" for k, v in ann["judgements"].items())
         html += f"""
-<div style="border:1px solid #e0b97c;border-radius:6px;padding:10px;margin:8px 4px;background:#fff8ec;">
+<div style="border:1px solid #e0b97c;border-radius:6px;padding:10px;margin:8px 4px;background:#fff8ec;color:#111;">
   <b>exact-token reward 的已知局限</b>（真实案例，人工离线标注）<br>
   标准答案 → RL greedy 输出中的 mismatch：article→story、fall→spring<br>
   {judgements}<br>
@@ -108,7 +108,7 @@ def tab2_html(ex_idx, stage_key, mode, kf_i, vocab):
     return f"""
 <div style="border:1px solid #ddd;border-radius:6px;padding:12px;">
   <b>{label}</b> · σ = {f['sigma']:.4f} · 当前 MASK 数量 = {f['mask_count']}
-  · <span style="background-color:#a5d6a7;padding:0 4px;">本帧新揭示 {len(newly)} 个 token</span><br><br>
+  · <span style="background-color:#a5d6a7;color:#111;padding:0 4px;">本帧新揭示 {len(newly)} 个 token</span><br><br>
   <div style="font-family:monospace;font-size:16px;line-height:1.9;word-break:break-word;">
     {seq_html(f['tokens'], f['mask_positions'], newly, vocab)}
   </div>
