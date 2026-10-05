@@ -1,10 +1,18 @@
 # Score Entropy Discrete Diffusion
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
+> **📌 课程项目导航（Course Project）**：本仓库同时包含一个完整的离散扩散语言模型（dLLM）后训练研究项目：partial-reveal SFT → on-policy RL → Reveal-Order Compatibility 分析（CPI / OrderGap），并提供无 GPU 依赖的交互式 Demo 与面试材料。
+>
+> - **交互式 Demo**（预计算模式，无需 GPU / 不加载模型 / 不联网）：[README/demo.md](README/demo.md)，启动 `.venv/bin/python demo/app.py`
+> - **最终研究结论（Findings / Challenges / Lessons）**：[reports/final_findings_and_lessons.md](reports/final_findings_and_lessons.md)
+> - **汇报大纲（8 页）**：[reports/final_presentation_outline.md](reports/final_presentation_outline.md)
+> - **面试讲稿（30s / 2min / 5min）**：[README/interview_demo.md](README/interview_demo.md) · **技术 Q&A（41 题）**：[README/interview_qa.md](README/interview_qa.md)
+> - **评估结果 provenance / errata（append-only）**：[protocol/errata_v4.2_eval_provenance.md](protocol/errata_v4.2_eval_provenance.md)
+>
+> 以下为 SEDD 论文复现与使用的上游说明。
+
 This repo contains a PyTorch implementation for the paper [Discrete Diffusion Modeling by Estimating the Ratios of the Data Distribution
 ](https://arxiv.org/abs/2310.16834) by [Aaron Lou](https://aaronlou.com), [Chenlin Meng](https://cs.stanford.edu/~chenlin/) and [Stefano Ermon](https://cs.stanford.edu/~ermon/).
-
-![cover](assets/main.gif)
 
 ## Design Choices
 
