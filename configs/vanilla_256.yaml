@@ -81,3 +81,9 @@ work_dir: exp_local/regime_a
 hydra:
   run:
     dir: exp_local/regime_a/${now:%Y.%m.%d}/${now:%H%M%S}
+
+# --- mechanism pilot（protocol v1.2，2026-10-06）---
+# 仅 training/pilot_mechanism.py 使用；vanilla.py 忽略。
+mechanism:
+  policy: A            # A | B | C | D（§3）
+  replicate: 1         # 1 | 2（§4 CRN 配对）

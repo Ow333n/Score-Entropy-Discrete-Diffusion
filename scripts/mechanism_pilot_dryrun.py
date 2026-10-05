@@ -1,8 +1,9 @@
-"""Mechanism pilot dry-run（CPU，无模型）：重放 shared schedule 五元组并验证跨 policy 一致。
+"""Mechanism pilot dry-run / preflight（CPU，无模型）。
 
-protocol v1.2 §9.4：每 replicate 重放 2500×32 步的
-(sample_id, span_start, span_len, σ, K) 流，输出 SHA-256 digest；
-验证四 policy 共享流互不污染（A/B 的 mask 选择只消耗各自 policy 流）。
+protocol v1.2 §9.4 + pilot preflight（2026-10-06 批准）：
+1. K sanity：经验 mean(K_t) vs 经验 mean(m_t·q_t)（z-score 判定）；
+2. 跨 policy 哈希：同一 replicate 下经 A/B/C/D 四条实际 policy execution
+   path 后 schedule_hash_A == B == C == D，且 replicate 1 != replicate 2。
 
 用法: .venv/bin/python scripts/mechanism_pilot_dryrun.py
 输出: results/mechanism_pilot_dryrun/dryrun_summary.json + stdout 摘要
@@ -20,14 +21,18 @@ from hydra import initialize, compose
 
 from data import get_dataset
 from task_data.policy_corruption import (SharedSchedule, draw_pi_L, make_generator,
-                                        select_mask, stream_seed)
+                                        select_mask)
+
+POLICIES = ("A", "B", "C", "D")
 
 
-def replay(r, n_steps, micro_batch, N_chunks, cfg):
-    """重放 replicate r 的完整五元组流；返回 (digest, K_hist, sigma_hist)。"""
+def replay_with_policy(r, policy, n_steps, micro_batch, N_chunks, cfg):
+    """重放 replicate r 的共享五元组流并执行指定 policy 的选择路径。
+
+    返回 (schedule_sha256, K_all, sigma_all, span_len_all, n_masks_total)。
+    """
     g_data = make_generator("data_order", r)
-    # DataLoader(shuffle=True, generator=g) = RandomSampler: 每 epoch 一次 randperm
-    perm = torch.randperm(N_chunks, generator=g_data)          # 80000 < N ⇒ 单次 perm 足够
+    perm = torch.randperm(N_chunks, generator=g_data)
     sample_ids = perm[: n_steps * micro_batch]
 
     sched = SharedSchedule(r, cfg.data.seq_len, cfg.data.span_min,
@@ -37,34 +42,31 @@ def replay(r, n_steps, micro_batch, N_chunks, cfg):
     pi_L = draw_pi_L(g_b, cfg.data.seq_len)
 
     digest = hashlib.sha256()
-    K_all, sigma_all = [], []
-    k0_hist = torch.zeros(cfg.data.seq_len + 1, dtype=torch.long)
-    span0_hist = torch.zeros(cfg.data.seq_len + 1, dtype=torch.long)
+    K_all, sigma_all, span_len_all, n_masks = [], [], [], 0
     for i in range(0, sample_ids.numel(), micro_batch):
         sigma, dsigma, span_len, span_start, K = sched.draw(micro_batch)
-        K_all.append(K)
-        sigma_all.append(sigma)
-        # digest：五元组（sample_id 单独更新）
+        K_all.append(K); sigma_all.append(sigma); span_len_all.append(span_len)
         digest.update(sample_ids[i:i + micro_batch].numpy().tobytes())
         for arr in (sigma, dsigma, span_len, span_start, K):
             digest.update(arr.numpy().tobytes())
-        # 期间执行 policy 选择（只消耗各自 policy 流；结果仅验证不落盘）
+        # 实际 policy execution path（A 消耗自身流；B 用 π_L；C/D 确定性）
         for j in range(micro_batch):
-            K_j = int(K[j].item())
-            select_mask(span_start[j:j + 1], span_len[j:j + 1], K[j:j + 1],
-                        "A", cfg.data.seq_len, generator=g_a)
-            select_mask(span_start[j:j + 1], span_len[j:j + 1], K[j:j + 1],
-                        "B", cfg.data.seq_len, pi_L=pi_L)
-    K_t = torch.cat(K_all)
-    sigma_t = torch.cat(sigma_all)
-    return digest.hexdigest(), K_t, sigma_t
+            kwargs = (dict(generator=g_a) if policy == "A" else
+                      dict(pi_L=pi_L) if policy == "B" else {})
+            sel = select_mask(span_start[j:j + 1], span_len[j:j + 1], K[j:j + 1],
+                              policy, cfg.data.seq_len, **kwargs)[0]
+            n_masks += sel.numel()
+            if sel.numel() != int(K[j].item()):       # |M|==K 不变量
+                raise RuntimeError(f"{policy}: |mask|={sel.numel()} != K={int(K[j])}")
+    return (digest.hexdigest(), torch.cat(K_all).float(), torch.cat(sigma_all),
+            torch.cat(span_len_all).float(), n_masks)
 
 
 def main():
     with initialize(version_base=None, config_path="../configs"):
         cfg = compose(config_name="vanilla_256")
 
-    n_steps = 2500          # pilot 步数（协议 §3）
+    n_steps = 2500
     micro_batch = cfg.training.batch_size // (cfg.ngpus * cfg.training.accum)
     n_items = n_steps * micro_batch
 
@@ -76,47 +78,47 @@ def main():
                            "results", "mechanism_pilot_dryrun")
     os.makedirs(out_dir, exist_ok=True)
 
-    summary = dict(
-        protocol_version="v1.2",
-        n_steps=n_steps,
-        micro_batch=micro_batch,
-        n_items=n_items,
-        N_train_chunks=N_chunks,
-        seq_len=cfg.data.seq_len,
-        span_min=cfg.data.span_min,
-        span_max=cfg.data.span_max,
-        replicates={},
-    )
+    summary = dict(protocol_version="v1.2", preflight="2026-10-06",
+                   n_steps=n_steps, micro_batch=micro_batch, n_items=n_items,
+                   N_train_chunks=N_chunks, seq_len=cfg.data.seq_len,
+                   span_min=cfg.data.span_min, span_max=cfg.data.span_max,
+                   replicates={})
+
+    print(f"重放规模：{n_steps} 步 × {micro_batch} items = {n_items} 五元组/run（×4 policy × 2 replicate）")
     for r in (1, 2):
-        d1, K1, s1 = replay(r, n_steps, micro_batch, N_chunks, cfg)
-        d2, K2, s2 = replay(r, n_steps, micro_batch, N_chunks, cfg)
-        same = d1 == d2
-        q_emp = (1 - (-s1).exp())
+        hashes, stats = {}, {}
+        for policy in POLICIES:
+            h, Kt, st, mt, n_masks = replay_with_policy(r, policy, n_steps,
+                                                        micro_batch, N_chunks, cfg)
+            hashes[policy] = h
+            q_t = 1 - (-st).exp()
+            # Preflight 1: 经验 mean(K_t) vs 经验 mean(m_t·q_t)
+            z = (Kt.mean() - (mt * q_t).mean()) / (
+                ((mt * q_t * (1 - q_t)).mean() / n_items) ** 0.5)
+            stats[policy] = dict(K_mean=float(Kt.mean()),
+                                 mq_mean=float((mt * q_t).mean()),
+                                 z_score=float(z),
+                                 n_masks_total=n_masks)
+            print(f"  r={r} policy {policy}: hash={h[:16]}… "
+                  f"mean(K)={Kt.mean():.4f} mean(m·q)={(mt*q_t).mean():.4f} "
+                  f"z={z:+.3f} Σ|mask|={n_masks}")
+        all_equal = len(set(hashes.values())) == 1
+        print(f"  r={r}: schedule_hash_A==B==C==D: {all_equal}")
         summary["replicates"][str(r)] = dict(
-            schedule_sha256=d1,
-            replay_twice_identical=same,
-            K_mean=float(K1.float().mean()),
-            K_var=float(K1.float().var(unbiased=False)),
-            K_min=int(K1.min()), K_max=int(K1.max()),
-            q_mean=float(q_emp.mean()),
-            q_min=float(q_emp.min()), q_max=float(q_emp.max()),
-            expected_K_mean_given_schedule=float(
-                (s1.numel() and (1 - (-s1).exp()).mean() * 20.0)),  # span 均值≈30，见下方真值
-        )
-        # 理论校验：E[K] = E[m·q] = E[m]·E[q]（m 与 q 独立）
-        m_emp = 20.0  # 占位，实际用 span 流重放值校验于 K 统计中
-        print(f"replicate {r}: sha256={d1[:16]}... 两次重放一致={same} "
-              f"K_mean={K1.float().mean():.3f} K_var={K1.float().var(unbiased=False):.3f} "
-              f"q_mean={q_emp.mean():.4f} K∈[{int(K1.min())},{int(K1.max())}]")
-        print(f"  预期 E[K]=E[m]·E[q]=30×{q_emp.mean():.4f}={30*q_emp.mean():.3f} "
-              f"(span_len~U[10,50] 均值 30)")
+            schedule_sha256=hashes, policy_hashes_equal=all_equal, stats=stats)
+
+    h1 = summary["replicates"]["1"]["schedule_sha256"]["A"]
+    h2 = summary["replicates"]["2"]["schedule_sha256"]["A"]
+    print(f"\nreplicate 1 != replicate 2: {h1 != h2}")
+    print(f"preflight 1 (K sanity)：全部 |z| < 3 判定通过："
+          f"{all(abs(summary['replicates'][k]['stats'][p]['z_score']) < 3 for k in ('1','2') for p in POLICIES)}")
+    print(f"preflight 2 (跨 policy 哈希一致)："
+          f"{summary['replicates']['1']['policy_hashes_equal'] and summary['replicates']['2']['policy_hashes_equal']}")
 
     path = os.path.join(out_dir, "dryrun_summary.json")
     with open(path, "w") as f:
         json.dump(summary, f, indent=2)
-    print(f"\n跨 replicate digest 不同: {summary['replicates']['1']['schedule_sha256'] != summary['replicates']['2']['schedule_sha256']}")
     print(f"summary: {path}")
-    print("dry-run PASS（policy 选择未污染共享流：两次重放 digest 一致）")
 
 
 if __name__ == "__main__":

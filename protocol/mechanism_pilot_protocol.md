@@ -302,7 +302,7 @@ manifest + frozen evaluator，与训练 schedule 完全分离。
 - **措辞纪律**：pilot 结论一律以"在 2 replicates、8GB、2500 步、SEDD-small 的
   pilot 设置下"开头；不得外推到规模、任务族或训练长度。
 
-# 9. 实现与验证顺序（本阶段范围，不含训练）
+# 9. 实现与验证顺序（staged execution，2026-10-06 补充；不改 hypothesis/gate/Case 定义）
 
 1. 本协议冻结（用户复核通过）→
 2. `task_data/policy_corruption.py`：共享 schedule 五元组生成（§4）+ A/B/C/D mask
@@ -316,12 +316,28 @@ manifest + frozen evaluator，与训练 schedule 完全分离。
    - 既有测试回归：`scripts/run_tests.py`（compatibility 套件）与 RL 套件全绿；
      `losses.py / graph_lib.py / noise_lib.py / data.py / training/vanilla.py /
      task_data/corruption.py` 保持零改动（git diff 验证）。
-4. Dry-run（CPU，无模型）：`scripts/mechanism_pilot_dryrun.py` 重放 2500×32 步
-   schedule，输出每 replicate 四 policy 的 schedule digest 并验证跨 policy 相等 →
-5. 交付 v1.2 协议 + loss↔代码对应 + 测试结果 + hash 检查结果 → 用户裁定 →
-6. 训练（>2h 任务由用户 tmux 执行；8 run）→ Tier-1 评估 → Gate 判定 → 报告。
+4. Dry-run / preflight（CPU，无模型）：`scripts/mechanism_pilot_dryrun.py`
+   —— ① K sanity：经验 mean(K_t) vs 经验 mean(m_t·q_t)（|z|<3）；② 同一 replicate
+   经 A/B/C/D 四条实际 policy execution path 后 schedule_hash 四者相等，且
+   replicate 1 ≠ replicate 2。输出落盘 `results/mechanism_pilot_dryrun/`。
+5. **Stage P1 — primary causal comparison 先行**（训练由用户 tmux 执行）：
+   A1, B1, A2, B2（每 run 2500 步 ≈ 20 min；checkpoint 500/1020/2500，EMA-only
+   容器 + 2500 raw）。
+   - 评估：masked-span NLL、token accuracy、CPI_abs、CPI_RMS、signed δ mean，
+     每 checkpoint 报告 CPI_A − CPI_B；**sample bootstrap CI 分 replicate 给出**
+     （不 pool），并报告两 replicate 点估计是否同方向。暂不做全面 OrderGap。
+   - **P1 review**：A/B temporal 表 + matched-step task metrics 交用户裁定。
+     （有信号 → 补 A/B OrderGap、matched-performance（§5.3）、pair-distance /
+     σ buckets。）
+6. **Stage P2 — directional auxiliary**：C1, D1, C2, D2（P1 review 后执行，
+   同样评估口径）。
+7. Gate 判定（§5.2）→ 报告（`reports/mechanism_pilot_report.md`）。
 
-**未冻结 §9.2-§9.5 前，禁止启动任何 2500-step 训练。**
+**训练期硬停规则**：不改 frozen evaluator、protocol、mask policies、gate；
+任何 OOM / NaN / schedule hash mismatch（对比 preflight 参考）/ frozen 文件被改动
+→ 硬停，禁止临时修参数继续跑。
+
+**未完成 §9.1-§9.4 的 preflight 前，禁止启动任何 2500-step 训练。**
 
 ---
 
@@ -352,3 +368,8 @@ manifest + frozen evaluator，与训练 schedule 完全分离。
   ⑤ 连带修正：co-visibility 矩阵在随机 span 下无良定义 → 删除，P3 仅由可选常数-q
   探针检验；B 的定义改为"π_L 秩最小 K 个（span 内）"，D≡B(identity)、C≡B(reverse)；
   存储计划微调至 ≈23.3GB。
+- **v1.2 staged execution（2026-10-06 批准）**：执行顺序优化（§9 改写）——
+  preflight（K sanity 经验对经验 + 四 policy 实际路径哈希）→ Stage P1（A1/B1/A2/B2
+  先行，CPI/NLL/acc/signed-δ 分 replicate CI，暂缓 OrderGap）→ P1 review →
+  （有信号）A/B OrderGap + matched-performance + buckets → Stage P2（C/D）。
+  仅计算/执行顺序，**不修改 hypothesis、gate、Case 1–4 定义**。
