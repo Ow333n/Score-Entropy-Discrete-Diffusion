@@ -1,0 +1,17 @@
+{
+  "tag": "pretrained",
+  "model_path": "louaaron/sedd-small",
+  "source": "louaaron/sedd-small",
+  "step": null,
+  "protocol_version": "v4.1",
+  "manifest_file": "manifests/regime_a_eval_v1.jsonl",
+  "manifest_sha256": "1897bd14bf92e61b2664a4950a3b60f14e09ac0d454d58d22e88815207f263d3",
+  "git_commit": "84dc4b45c2ce6e43b10424ff0fc4cd83582c2e68",
+  "masked_nll": 4.28125,
+  "masked_nll_sem": 0.08105746418436738,
+  "token_acc": 0.32228586077690125,
+  "token_acc_sem": 0.009834290144046806,
+  "greedy_per_pos_hit_rate": 0.44304807841109756,
+  "greedy_span_exact_match": 0.02,
+  "n_greedy": 100
+}

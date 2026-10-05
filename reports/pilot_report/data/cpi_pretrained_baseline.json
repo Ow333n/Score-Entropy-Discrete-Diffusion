@@ -1,0 +1,167 @@
+{
+  "tag": "pretrained",
+  "model_path": "louaaron/sedd-small",
+  "manifest_file": "manifests/regime_a_eval_v1.jsonl",
+  "manifest_sha256": "1897bd14bf92e61b2664a4950a3b60f14e09ac0d454d58d22e88815207f263d3",
+  "git_commit": "84dc4b45c2ce6e43b10424ff0fc4cd83582c2e68",
+  "python_version": "3.12.3",
+  "torch_version": "2.14.1+cu130",
+  "cuda_runtime": "13.0",
+  "protocol_version": "v4.1",
+  "summary": {
+    "name": "pretrained",
+    "n_samples": 500,
+    "cpi_abs": 0.328125,
+    "cpi_abs_sem": 0.022710065396482237,
+    "cpi_rms": 0.60546875,
+    "delta_mean": 0.002685546875,
+    "delta_sem": 0.027077385665036514,
+    "delta_median": 0.0,
+    "delta_abs_p90": 0.9375,
+    "delta_abs_p99": 2.2853143215179443,
+    "delta_sd": 0.60546875,
+    "local_ce": 4.28125,
+    "local_ce_sem": 0.08105746418436738,
+    "token_acc": 0.32228586077690125,
+    "token_acc_sem": 0.009834290144046806
+  },
+  "buckets": {
+    "sigma": [
+      {
+        "bucket": 0,
+        "n": 125,
+        "lo": 0.5,
+        "hi": 0.5,
+        "cpi_abs": 0.228515625,
+        "delta_mean": -0.051025390625
+      },
+      {
+        "bucket": 1,
+        "n": 125,
+        "lo": 0.5,
+        "hi": 1.5,
+        "cpi_abs": 0.2294921875,
+        "delta_mean": -0.041259765625
+      },
+      {
+        "bucket": 2,
+        "n": 125,
+        "lo": 1.5,
+        "hi": 3.0,
+        "cpi_abs": 0.373046875,
+        "delta_mean": 0.0264892578125
+      },
+      {
+        "bucket": 3,
+        "n": 125,
+        "lo": 3.0,
+        "hi": 3.0,
+        "cpi_abs": 0.484375,
+        "delta_mean": 0.07666015625
+      }
+    ],
+    "mask_ratio": [
+      {
+        "bucket": 0,
+        "n": 125,
+        "lo": 0.1111111119389534,
+        "hi": 0.4444444477558136,
+        "cpi_abs": 0.185546875,
+        "delta_mean": -0.0279541015625
+      },
+      {
+        "bucket": 1,
+        "n": 125,
+        "lo": 0.4444444477558136,
+        "hi": 0.7777777910232544,
+        "cpi_abs": 0.314453125,
+        "delta_mean": -0.078125
+      },
+      {
+        "bucket": 2,
+        "n": 125,
+        "lo": 0.7777777910232544,
+        "hi": 0.9230769276618958,
+        "cpi_abs": 0.34765625,
+        "delta_mean": -0.034912109375
+      },
+      {
+        "bucket": 3,
+        "n": 125,
+        "lo": 0.9230769276618958,
+        "hi": 1.0,
+        "cpi_abs": 0.466796875,
+        "delta_mean": 0.15234375
+      }
+    ],
+    "span_len": [
+      {
+        "bucket": 0,
+        "n": 125,
+        "lo": 10.0,
+        "hi": 21.0,
+        "cpi_abs": 0.4375,
+        "delta_mean": 0.020263671875
+      },
+      {
+        "bucket": 1,
+        "n": 125,
+        "lo": 22.0,
+        "hi": 32.0,
+        "cpi_abs": 0.330078125,
+        "delta_mean": -0.06640625
+      },
+      {
+        "bucket": 2,
+        "n": 125,
+        "lo": 32.0,
+        "hi": 41.0,
+        "cpi_abs": 0.3359375,
+        "delta_mean": 0.019287109375
+      },
+      {
+        "bucket": 3,
+        "n": 125,
+        "lo": 41.0,
+        "hi": 50.0,
+        "cpi_abs": 0.21484375,
+        "delta_mean": 0.03759765625
+      }
+    ],
+    "pair_distance": [
+      {
+        "bucket": 0,
+        "n": 125,
+        "lo": 1.0,
+        "hi": 4.0,
+        "cpi_abs": 0.6796875,
+        "delta_mean": 0.01904296875
+      },
+      {
+        "bucket": 1,
+        "n": 125,
+        "lo": 4.0,
+        "hi": 8.0,
+        "cpi_abs": 0.357421875,
+        "delta_mean": -0.0177001953125
+      },
+      {
+        "bucket": 2,
+        "n": 125,
+        "lo": 8.0,
+        "hi": 15.0,
+        "cpi_abs": 0.1708984375,
+        "delta_mean": 0.036865234375
+      },
+      {
+        "bucket": 3,
+        "n": 125,
+        "lo": 15.0,
+        "hi": 41.0,
+        "cpi_abs": 0.10888671875,
+        "delta_mean": -0.02734375
+      }
+    ]
+  },
+  "peak_vram_gb": 1.333732352
+}

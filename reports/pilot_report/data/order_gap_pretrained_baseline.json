@@ -1,0 +1,41 @@
+{
+  "tag": "pretrained",
+  "n_samples": 500,
+  "order_gap_raw": 10.244453430175781,
+  "order_gap_raw_sem": 0.35335792104657465,
+  "order_gap_per_token": 0.6054141521453857,
+  "order_gap_per_token_sem": 0.03129723690330684,
+  "var_pi_mean": 24.32954216003418,
+  "var_pi_sem": 3.116533391516171,
+  "mean_m": 21.666000366210938,
+  "Q_by_path": {
+    "l2r": {
+      "mean": -61.991539001464844,
+      "sem": 2.0242766576591777
+    },
+    "r2l": {
+      "mean": -61.324119567871094,
+      "sem": 1.996261151128642
+    },
+    "random_0": {
+      "mean": -62.12399673461914,
+      "sem": 2.0132974533418597
+    },
+    "random_1": {
+      "mean": -62.23049545288086,
+      "sem": 2.0364961126933863
+    },
+    "random_2": {
+      "mean": -62.17176818847656,
+      "sem": 2.033571714097935
+    },
+    "confidence": {
+      "mean": -65.77591705322266,
+      "sem": 1.953073642224528
+    }
+  },
+  "peak_vram_gb": 2.36401664,
+  "protocol_version": "v4.1",
+  "manifest_file": "manifests/regime_a_eval_v1.jsonl",
+  "manifest_sha256": "1897bd14bf92e61b2664a4950a3b60f14e09ac0d454d58d22e88815207f263d3"
+}

@@ -1,0 +1,107 @@
+# Regime A 协议冻结文件 (protocol §28 / experiment_protocol.md v4.1)
+# 冻结范围: 数据与评估 manifest 构造 (在正式 CPI/OrderGap 比较前必须冻结)
+# 训练超参 (N, LR, optimizer, EMA...) 按 experiment_protocol.md §3.3A 在 Vanilla pilot 后冻结
+protocol_version: v4.1
+regime: A
+task: wikitext103-span-infilling
+
+data:
+  source: wikitext103
+  split: test
+  seq_len: 256
+  span_len_min: 10
+  span_len_max: 50
+  sigma_grid: [0.5, 1.5, 3.0]      # §4.7 sigma_low/mid/high 分桶的冻结网格
+  corruption: partial-absorbing    # span 内 mask prob = 1-e^{-sigma}; span 外恒可见 (§7.2)
+  context_always_visible: true
+
+eval_manifest:
+  file: manifests/regime_a_eval_v1.jsonl
+  n_samples: 500                   # §21: m<2 的样本在构建期跳过并记录 skip count
+  eval_manifest_seed: 0            # §3.11: eval manifest 不随 training seed 变化
+  pairs_per_sample: 1              # §5.2 默认随机一对, i != j, 均在 target span 且初始 masked
+  min_masked_target: 2
+  random_paths_per_sample: 3       # §6.3: 每 example 固定 3 条 random paths
+  path_types: [l2r, r2l, random_0, random_1, random_2, confidence]
+  confidence_path_source: pretrained   # §6.4: 主比较用 pretrained 生成的固定置信路径
+
+vanilla_pilot:                     # §3.1: 以下参数在 pilot 开始前已冻结 (2026-10-01)
+  pilot_seed: 0
+  n_pilot_max: 30000               # optimization horizon, 非 wall-clock (依据: SEDD-small 经验)
+  eval_interval_M: 500
+  plateau_window_K: 6              # 连续 K 次 eval 相对改善 < eps_rel 判 plateau
+  relative_improvement_threshold_epsilon: 0.005
+  safety_factor_alpha: 1.2         # N = min(N_pilot_max, ceil(alpha * s_p))
+  hardware_driven_design_choice: false   # 若 smoke 显示 30k steps 不现实则改 true 并记录原因
+
+task_loss_reduction: mean_over_masked_span   # §7.3 recipe 设计选择 (冻结): (dsigma*SE) 在 span 内
+                                             # mask 支撑集上按序列均值 → batch 均值
+# 🔒 正式冻结 (2026-10-01, Vanilla pilot lrprobe 后, §3.3A)
+# 依据: pilot-150849 (lr=3e-5, 30k 步): eval 7.55→7.05@6500 最优, plateau@8500,
+# N = min(30000, ceil(1.2*8500)) = 10200; 20000 步后晚段过拟合 (+0.3 nats)
+# 正式 2x2 所有条件 (Vanilla/PAPL/Swap/PAPL+Swap) 必须使用以下共享 recipe:
+training_frozen:
+  dropout: 0.0                     # §9.1
+  N: 10200                         # §3.1 plateau 规则: s_p=8500, alpha=1.2
+  analysis_checkpoint_fractions: [0.1, 0.5, 1.0]   # §3.2: steps = [1020, 5100, 10200]
+  base_lr: 3e-5                    # LR 校准探针选定 (3e-4 发散, 1e-4 摇摆, 3e-5 单调)
+  lr_schedule: linear_warmup
+  warmup: 2500
+  weight_decay: 0.0
+  optimizer: AdamW
+  adam_beta1: 0.9
+  adam_beta2: 0.999
+  adam_eps: 1e-8
+  ema: 0.9999
+  grad_clip: 1.0
+  effective_batch: 32              # config batch 32, micro 32, accum 1 (G0 §4.1 语义)
+  seq_len: 256
+  span_range: [10, 50]
+  k_pair: 1                        # §3.4 默认
+  lambda: TBD_POST_CALIBRATION     # §14 梯度范数校准后冻结 (仅 Swap/PAPL+Swap 用)
+  formal_training_seeds: [[1, 1, 1], [2, 2, 2]]   # §3.11: [model, data_order, corruption] x2
+
+# 🔒 G1/G2 评估口径预注册 (2026-10-01, 在 formal Vanilla 结果出现之前冻结)
+# 结果出来后不允许改口径 (§19 Formal Freeze Rule)。
+g2_evaluation_pre_registered:
+  primary_weights: EMA (shadow) 权重      # raw weights 同时保存、仅作 secondary 报告
+  primary_checkpoint: late (10200)        # Stage-4 Δ 比较的主点; 1020/5100 报告轨迹
+  per_checkpoint_metrics:
+    - masked_nll                          # frozen manifest, span-masked 位置
+    - token_accuracy
+    - cpi_abs
+    - cpi_rms
+    - delta_signed_mean
+    - cpi_buckets: [sigma, pair_distance, span_len]
+    - ordergap_raw                        # TF, manifest 固定路径 (含 pretrained 置信路径)
+    - ordergap_per_token
+    - adaptive_confidence_order_gap       # 每 checkpoint 自己的置信路径, 与 fixed 分开报告
+    - sampled_rollout: [greedy, T=1.0]    # §3.9 主结果; T=0.5/1.5 仅 sensitivity
+  reporting:
+    per_seed: true                        # §17.1/§3.11: 2 seeds 各自结果 + seed mean + spread
+    paired_bootstrap_ci: true             # sample-level paired bootstrap (10k 重采样), 仅表
+                                          # 评估样本不确定性, 不作 training-seed 显著性
+    no_more_seeds_for_significance: true  # 方向相反 → unstable, 不加 seed 追显著
+
+# 🔒 Stage-4 stop/go gate 判据预注册 (结果前冻结)
+stage4_gate_pre_registered:
+  delta_definition:
+    delta_cpi: "CPI_abs(SFT late) - CPI_abs(pretrained), paired per-sample |delta| 差值"
+    delta_og: "OrderGap_raw(SFT late) - OrderGap_raw(pretrained), paired per-sample"
+  stable_criterion:                       # 每个 seed 独立判:
+    - "paired bootstrap 95% CI (10k) of mean delta 不含 0"
+    - "两个 seed 符号一致"
+  co_movement_criterion:                  # 每个 seed 独立判:
+    - "sign(CPI_late - CPI_early) == sign(OG_late - OG_early)"
+    - "两者的 paired bootstrap 95% CI 均不含 0"
+    - "两个 seed 判断一致"
+  gate_outcomes:                          # proposal §11
+    - "A_HARD_STOP: ΔCPI 不 stable → 停方法路线, 转诊断论文"
+    - "B_DIAGNOSTIC_ONLY: ΔCPI stable 但联动不成立 → 现象级, 机制声明弱化"
+    - "C_PROCEED: ΔCPI stable 且联动成立 → 进入 PAPL/Swap 路线"
+  seed_disagreement: "任一判据两 seed 方向相反 → 记录 unstable, 不加 seed"
+  pre_conditions:
+    - "G0.5 state-support gate 必须先过 (正式训练态 vs frozen manifest 统计覆盖)"
+    - "pilot step-30000 的 G1 仅为 learnability sanity, 不替代 formal N=10200 的 G1"
+    - "pilot 24k 附近 train-loss spike 与 late-stage validation degradation 仅作审计记录,
+       不据此修改正式 recipe"

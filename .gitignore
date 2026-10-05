@@ -12,7 +12,7 @@ __pycache__
 **/wandb/
 **/exp/
 **/exp_local/
-data/
+/data/
 eval/
 assets/
 **.pth
@@ -23,3 +23,6 @@ core
 *.pt
 .venv/
 !manifests/*.jsonl
+# 报告数据附件（reports/*_report/data/）需入库，仅排除根目录 data/（HF 缓存）
+!reports/pilot_report/data/sha256s.txt
+!reports/stage4_report/data/sha256s.txt
