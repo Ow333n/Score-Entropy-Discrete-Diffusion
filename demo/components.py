@@ -112,19 +112,19 @@ def example_choices():
     return out
 
 
-# Tab 1 默认展示样本（frozen demo examples 之一）：
+# Tab 1/2 默认展示样本（frozen demo examples 之一）：
 # s69（Rifenburg 段）是 15 个样本中阶段改善故事最干净的：
 # 局部 CE 1.008→0.531→0.512（几乎减半，RL 与 SFT 逐位相同）；
 # greedy 红 3→1（0.769→0.846→0.846）、sampled 0.538→0.615→0.615；
 # 错误几乎全在完整词（fall/summer、article/story），语义等价误配由
 # annotation 卡片说明。s375 与 s105 仍保留在列表中作为 tokenizer/
-# exact-match 局限案例研究。只影响 Tab 1 默认选中，不触碰任何数据与结果。
-DEFAULT_TAB1_INDEX = 69
+# exact-match 局限案例研究。只影响默认选中，不触碰任何数据与结果。
+DEFAULT_SAMPLE_INDEX = 69
 
 
-def default_tab1_choice():
+def default_sample_choice():
     for c in example_choices():
-        if c.startswith(f"s{DEFAULT_TAB1_INDEX:03d} "):
+        if c.startswith(f"s{DEFAULT_SAMPLE_INDEX:03d} "):
             return c
     return example_choices()[0]
 
