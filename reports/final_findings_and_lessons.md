@@ -2,6 +2,8 @@
 
 > 面向中国面试官 / 中国团队的汇报文档。所有指标为 current-code harmonized 口径
 > （历史 early-eval 数值的 provenance 说明见 protocol/errata_v4.2_eval_provenance.md）。
+> prior work 定位与 novelty 边界见 reports/literature_check.md（Path-Dependent
+> Denoising curl = δ_swap、Majid swap consistency 等引用来源）。
 
 ## 一、核心 Findings（研究发现）
 

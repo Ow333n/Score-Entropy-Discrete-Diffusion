@@ -5,6 +5,7 @@
 >
 > - **交互式 Demo**（预计算模式，无需 GPU / 不加载模型 / 不联网）：[README/demo.md](README/demo.md)，启动 `.venv/bin/python demo/app.py`
 > - **最终研究结论（Findings / Challenges / Lessons）**：[reports/final_findings_and_lessons.md](reports/final_findings_and_lessons.md)
+> - **文献核查与 novelty 边界（prior work 定位）**：[reports/literature_check.md](reports/literature_check.md)
 > - **汇报大纲（8 页）**：[reports/final_presentation_outline.md](reports/final_presentation_outline.md)
 > - **面试讲稿（30s / 2min / 5min）**：[README/interview_demo.md](README/interview_demo.md) · **技术 Q&A（41 题）**：[README/interview_qa.md](README/interview_qa.md)
 > - **评估结果 provenance / errata（append-only）**：[protocol/errata_v4.2_eval_provenance.md](protocol/errata_v4.2_eval_provenance.md)
