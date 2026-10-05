@@ -57,7 +57,7 @@ def tab1_html(ex, show_ema, vocab):
         ce_html = (f"<b>局部 Mask Token CE</b>（compatibility sample 口径）：{local_ce:.3f}"
                    if local_ce is not None else "")
         cols.append(f"""
-<div style="border:1px solid #ddd;border-radius:6px;padding:10px;margin:4px;">
+<div class="gt-card">
   <b style="font-size:15px;">{label}</b><br>
   <b>Sampled 输出</b>（M0 精确重建率 {sv['sampled']['m0_reward']:.3f}）：<br>
   <span style="font-family:monospace;">{esc(sv['sampled']['final_text'])}</span><br><br>
@@ -68,7 +68,7 @@ def tab1_html(ex, show_ema, vocab):
     span_info = (f"目标 span：[{ex['span_start']}, {ex['span_end']}) · σ₀={ex['sigma']} · "
                  f"|M0|={len(ex['m0_positions'])}")
     html = f"""
-<div style="border:1px solid #bbb;border-radius:6px;padding:10px;margin:4px;background:#fafafa;color:#111;">
+<div class="gt-card">
   <b>标准答案</b>：<br>
   <span style="font-family:monospace;">{esc(ex['gt_text'])}</span><br><br>
   <b>初始 Mask 状态</b>：<br>
@@ -81,7 +81,7 @@ def tab1_html(ex, show_ema, vocab):
         ann = ex["semantic_annotation"]
         judgements = "<br>".join(f"&nbsp;&nbsp;{k}：<b>{v}</b>" for k, v in ann["judgements"].items())
         html += f"""
-<div style="border:1px solid #e0b97c;border-radius:6px;padding:10px;margin:8px 4px;background:#fff8ec;color:#111;">
+<div class="gt-card gt-card-note">
   <b>exact-token reward 的已知局限</b>（真实案例，人工离线标注）<br>
   标准答案 → RL greedy 输出中的 mismatch：article→story、fall→spring<br>
   {judgements}<br>

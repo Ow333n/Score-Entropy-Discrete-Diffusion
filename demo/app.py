@@ -58,7 +58,26 @@ def build_app():
     og_choices = [c for c in choices if "cs3" in c or "cs5" in c]
     og_choices = [c.split(" ")[0][1:] for c in og_choices]
 
-    with gr.Blocks(title="离散扩散语言模型后训练与 Reveal Order 可视化") as app:
+    # 自定义卡片样式：颜色/边框全部走 Gradio 主题变量，深浅两种模式下
+    # 自动与整站风格一致（深色模式=深底浅字，浅色模式=浅底深字）。
+    CUSTOM_CSS = """
+.gt-card {
+  background: var(--body-background-fill);
+  color: var(--body-text-color);
+  border: 1px solid var(--border-color-primary);
+  border-radius: 6px;
+  padding: 10px;
+  margin: 4px;
+  overflow-wrap: anywhere;
+}
+.gt-card-note {
+  margin: 8px 4px;
+  border: 1px solid var(--border-color-accent);
+}
+"""
+
+    with gr.Blocks(title="离散扩散语言模型后训练与 Reveal Order 可视化",
+                   css=CUSTOM_CSS) as app:
         gr.Markdown("""
 # 离散扩散语言模型后训练与 Reveal Order 可视化
 
