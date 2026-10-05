@@ -113,10 +113,13 @@ def example_choices():
 
 
 # Tab 1 默认展示样本（frozen demo examples 之一）：
-# s105 混合对错（10 绿 8 红）、错误以完整词为主、三阶段输出差异肉眼可见、
-# 文本最短（2 个 EOT 边界）。s375 仍保留在列表中作为 tokenizer/subword
-# 局限案例研究。只影响 Tab 1 默认选中，不触碰任何数据与结果。
-DEFAULT_TAB1_INDEX = 105
+# s69（Rifenburg 段）是 15 个样本中阶段改善故事最干净的：
+# 局部 CE 1.008→0.531→0.512（几乎减半，RL 与 SFT 逐位相同）；
+# greedy 红 3→1（0.769→0.846→0.846）、sampled 0.538→0.615→0.615；
+# 错误几乎全在完整词（fall/summer、article/story），语义等价误配由
+# annotation 卡片说明。s375 与 s105 仍保留在列表中作为 tokenizer/
+# exact-match 局限案例研究。只影响 Tab 1 默认选中，不触碰任何数据与结果。
+DEFAULT_TAB1_INDEX = 69
 
 
 def default_tab1_choice():
