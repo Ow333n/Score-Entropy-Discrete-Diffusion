@@ -150,15 +150,16 @@ def main():
     while step < cfg.training.n_iters:
         batch = next(iter(train_loader))["input_ids"].to(device)
         sigma, dsigma, span_len, span_start, K = sched.draw(micro_batch)
+        # 直方图在 CPU 上累加（sigma/K 此时仍为 CPU 张量）
+        K_hist += torch.bincount(K, minlength=cfg.data.seq_len + 1)
+        sigma_hist += torch.bincount(
+            sigma.mul(49).long().clamp(0, 49), minlength=50)
+
         masks = select_mask(span_start, span_len, K, policy, cfg.data.seq_len,
                             pi_L=pi_L, generator=g_a)
         x_t, span_mask = apply_masks(batch, masks, graph.dim - 1)
         sigma = sigma.to(device)
         dsigma = dsigma.to(device)
-
-        K_hist += torch.bincount(K, minlength=cfg.data.seq_len + 1)
-        sigma_hist += torch.bincount(
-            sigma.mul(49).long().clamp(0, 49), minlength=50)
 
         loss = span_task_loss(graph, score_model, batch, x_t, span_mask,
                               sigma, dsigma) / cfg.training.accum
