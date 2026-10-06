@@ -35,7 +35,7 @@ declare -A TRAIN=( [A1]="mechanism.policy=A mechanism.replicate=1" \
                    [A2]="mechanism.policy=A mechanism.replicate=2" \
                    [B2]="mechanism.policy=B mechanism.replicate=2" )
 for run in A1 B1 A2 B2; do
-  meta=$(ls -1t exp_local/regime_a/mechpilot-${run}-*/run_metadata.json 2>/dev/null | head -1)
+  meta=$(ls -1t exp_local/regime_a/mechpilot-${run}-*/run_metadata.json 2>/dev/null | head -1 || true)
   if [ -n "$meta" ]; then
     log=${meta%/*}/train.log
     grep -q "完成: 2500 optimizer steps" "$log" \
