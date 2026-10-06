@@ -1,0 +1,88 @@
+{
+  "title": "v2.1 mechanism pilot — execution manifest（FROZEN，正式 6-run 训练的实际超参）",
+  "protocol": "protocol/mechanism_complementary_exposure_v2_1.md（FINAL v1.1 — FROZEN，本体零改动）",
+  "protocol_sha256": "af312d864d41d8f67da343d55a8dee8a29a91c37dea622e6b2c4b22ef441fc61",
+  "errata": "protocol/mechanism_v2_1_errata.md",
+  "generated_at": "2026-10-06",
+  "approved_by": "用户（2026-10-06 批准进入正式 pilot；LR=3e-4 裁定）",
+  "lr": {
+    "value": 0.0003,
+    "v12_protocol_text": "3e-5（protocol/mechanism_pilot_protocol.md L131）",
+    "v12_actual_execution": "3e-4（configs/vanilla_256.yaml optim.lr；8 个 v1.2 run 的 train.log 均显示 step 2500 时 lr=3.00e-04）",
+    "v21_choice": "3e-4 = actual executed setting（与真实 empirical baseline 连续、U 与 v1.2-A 可比）",
+    "note": "不静默改写 v1.2 protocol 文本；本 manifest 为差异的透明记录"
+  },
+  "recipe": {
+    "optimizer": "AdamW",
+    "beta1": 0.9,
+    "beta2": 0.999,
+    "eps": 1e-8,
+    "weight_decay": 0.0,
+    "warmup_steps": 2500,
+    "lr_schedule": "linear warmup: lr*min(step/warmup,1)（losses.py optimization_manager，closed-form）",
+    "grad_clip": 1.0,
+    "batch_size_effective": 32,
+    "accum": 1,
+    "ngpus": 1,
+    "micro_batch": 32,
+    "seq_len": 256,
+    "span_range": [10, 50],
+    "n_iters": 2500,
+    "checkpoint_steps": [500, 1020, 2500],
+    "checkpoint_container": "{\"ema\": state_dict, \"step\": n}（EMA-only）+ {\"model\": state_dict, \"step\": n} raw @2500（v1.2 同款契约）",
+    "ema_decay": 0.9999,
+    "dropout": {
+      "value": 0.1,
+      "v21_protocol_text": "0.0（v2.1 §10 'dropout=0'）",
+      "v12_protocol_text": "0.0（v1.2 §9）",
+      "actual_execution": "0.1（configs/model/small.yaml dropout: 0.1 覆盖 vanilla_256.yaml 的 model.dropout: 0.0——hydra defaults 中 'model: small' 排在 '_self_' 之后，small 的字段优先；全部既往 SFT/mechpilot run 实际均用 0.1）",
+      "v21_choice": "0.1 = actual executed setting（与 LR 同一裁定原则；确定性由 checkpoint 的 RNG state 保存/恢复保证，p1 Gate-2 逐字节复现已实证）"
+    },
+    "noise": {"type": "loglinear", "sigma_min": 1e-4, "sigma_max": 20},
+    "graph": {"type": "absorb", "dim": 50258},
+    "loss": "Absorbing.score_entropy × dσ 加权 × masked-span 均值 × batch 均值（frozen recipe 零改动）",
+    "amp": "torch.cuda.amp.GradScaler",
+    "init": "louaaron/sedd-small → 同一 pretrained init；共享 step0 artifact exp_local/regime_a/mechpilot_shared/checkpoint_0000.pth",
+    "data": "wikitext103 train 256-chunk；shared data order（num_workers=0，确定性）"
+  },
+  "shared_stream_seeds": {"data_order": "1000+r", "sigma": "2000+r", "span": "3000+r", "k": "4000+r"},
+  "policy_stream_seeds": {
+    "H_pair_choice": "8001+r",
+    "H_orient": "8101+r",
+    "L_pair_choice": "8201+r",
+    "L_orient": "8301+r",
+    "U_uniform": "8401+r",
+    "singleton_coin": "8501+r",
+    "dropout": "7001+r"
+  },
+  "phase_rule": "phase = (span_start + span_len) mod m（确定性、共享、无额外 RNG；s≡0 实现解释见 task_data/v21_policy.py）",
+  "maps": {
+    "dir": "exp_local/regime_a/mechpilot_v21_maps",
+    "maps_manifest_sha256": "4ee8c94f9838fadd9a46169d1b197feb0e6fcce6f411cf964e00808f18b63d58"
+  },
+  "eval_manifest": {
+    "file": "manifests/regime_a_eval_v1.jsonl",
+    "sha256": "1897bd14bf92e61b2664a4950a3b60f14e09ac0d454d58d22e88815207f263d3"
+  },
+  "dryrun_reference": {
+    "file": "results/mechanism_pilot_v21_dryrun/dryrun_summary.json",
+    "shared_v21_digest_r1": "5da669c2045d9eb51ba3c8d27d16b6fa97b1e2f1f6f62ff13ff3126f460505c1",
+    "shared_v21_digest_r2": "3ee9c9dfc1dfdc38d97ee433a2338784b3605b352b31e5f919e672909fc80307"
+  },
+  "step0_frozen_baselines": {
+    "cpi_treated_r1": {"cpi_abs": 0.3480, "sem": 0.0103, "n_pairs": 11302},
+    "cpi_treated_r2": {"cpi_abs": 0.3427, "sem": 0.0098, "n_pairs": 11302},
+    "cpi_heldout": {"cpi_abs": 0.3444, "sem": 0.0084, "n_pairs": 15532},
+    "order_gap_subset": {"order_gap_raw": 12.3532, "path_score_variance": 33.2865, "n": 64}
+  },
+  "deviations_recorded": [
+    "LR：v1.2 protocol 文本 3e-5 vs 实际执行 3e-4；v2.1 取实际执行值（本 manifest 记录，不改写旧 protocol）",
+    "dropout：v1.2/v2.1 protocol 文本 0.0 vs 实际执行 0.1（hydra config 合并语义，small.yaml 默认值优先）；v2.1 取实际执行值 0.1",
+    "odd-m §6 cycle-edge active-phase 表述 erratum（见 mechanism_v2_1_errata.md；实现不受影响）",
+    "degenerate-K item 上 U 与 H/L 的 E_comp ≈2e-4 差异 = active-pair-only denominator / singleton 的 metric-definition artifact；exact mask-set 分布已验证 P_H=P_U=P_L，不构成 G3a FAIL"
+  ],
+  "runs": ["U1", "H1", "L1", "U2", "H2", "L2"],
+  "run_order": "U1 → H1 → L1 → U2 → H2 → L2（frozen driver scripts/run_v21_pilot.sh）",
+  "disk_safety_line": "训练期间 D: free < 15GB 时：完成当前 atomic checkpoint 后停止启动下一 run 并报告；禁止边训练边删除科研资产",
+  "stop_rules": "任何 run 出现 NaN / OOM / hash mismatch / schedule mismatch / protocol mismatch / checkpoint corruption → 立即硬停，不继续下一 condition"
+}

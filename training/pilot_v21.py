@@ -57,12 +57,16 @@ from compatibility.posterior import clean_log_probs
 PROTOCOL_VERSION = "v2.1"
 RECIPE_VERSION = "v21_pilot_v1"
 PROTOCOL_SHA256 = "af312d864d41d8f67da343d55a8dee8a29a91c37dea622e6b2c4b22ef441fc61"
+ERRATA_SHA256 = "d099aaaaa7732d98467a3cc43d5d6b936f32322252b7f291c298a0731af951b0"
+EXEC_MANIFEST_SHA256 = "5cb816f32e6c53d696625a3a233bd11e54f3be229aff38933c69593821eb3b25"
 FROZEN_FILES = ["losses.py", "graph_lib.py", "noise_lib.py", "data.py",
                 "training/vanilla.py", "task_data/corruption.py",
                 "task_data/policy_corruption.py", "model/",
                 "configs/vanilla_256.yaml",
                 "task_data/v21_policy.py", "evaluation/eval_cpi_pairs.py",
-                "evaluation/eval_order_gap_subset.py"]
+                "evaluation/eval_order_gap_subset.py",
+                "protocol/mechanism_v2_1_errata.md",
+                "protocol/mechanism_v2_1_execution_manifest.json"]
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 POLICY_STREAM_NAMES = {
     "U": ("u_uniform",),
@@ -84,6 +88,42 @@ def check_protocol_hash():
         ROOT, "protocol/mechanism_complementary_exposure_v2_1.md"), "rb").read()).hexdigest()
     if digest != PROTOCOL_SHA256:
         raise RuntimeError(f"协议 v2.1 sha256 不符: {digest[:16]}… 硬停")
+    for name, expected in (("mechanism_v2_1_errata.md", ERRATA_SHA256),
+                           ("mechanism_v2_1_execution_manifest.json", EXEC_MANIFEST_SHA256)):
+        got = hashlib.sha256(open(os.path.join(ROOT, "protocol", name),
+                                  "rb").read()).hexdigest()
+        if got != expected:
+            raise RuntimeError(f"{name} sha256 不符: {got[:16]}… 硬停")
+
+
+def check_exec_manifest_against_cfg(cfg):
+    """execution manifest 与本次 compose 出的 cfg 逐项交叉核对（recipe 一致性硬守卫）。"""
+    man = json.load(open(os.path.join(ROOT, "protocol",
+                                      "mechanism_v2_1_execution_manifest.json")))
+    r = man["recipe"]
+    checks = [
+        ("lr", float(man["lr"]["value"]), float(cfg.optim.lr)),
+        ("warmup_steps", int(r["warmup_steps"]), int(cfg.optim.warmup)),
+        ("batch_size_effective", int(r["batch_size_effective"]), int(cfg.training.batch_size)),
+        ("accum", int(r["accum"]), int(cfg.training.accum)),
+        ("ngpus", int(r["ngpus"]), int(cfg.ngpus)),
+        ("seq_len", int(r["seq_len"]), int(cfg.data.seq_len)),
+        ("span_range", tuple(r["span_range"]), (int(cfg.data.span_min), int(cfg.data.span_max))),
+        ("grad_clip", float(r["grad_clip"]), float(cfg.optim.grad_clip)),
+        ("ema_decay", float(r["ema_decay"]), float(cfg.training.ema)),
+        ("dropout", float(r["dropout"]["value"]), float(cfg.model.dropout)),
+        ("beta1", float(r["beta1"]), float(cfg.optim.beta1)),
+        ("beta2", float(r["beta2"]), float(cfg.optim.beta2)),
+        ("eps", float(r["eps"]), float(cfg.optim.eps)),
+        ("weight_decay", float(r["weight_decay"]), float(cfg.optim.weight_decay)),
+    ]
+    if cfg.training.n_iters == 2500:   # 正式 run 才核对步数（smoke=100 步属工程验证）
+        checks.append(("n_iters", int(r["n_iters"]), int(cfg.training.n_iters)))
+    for name, expected, actual in checks:
+        if expected != actual:
+            raise RuntimeError(f"execution manifest 与 cfg 不一致: {name} "
+                               f"manifest={expected} cfg={actual}，硬停")
+    return man
 
 
 def apply_masks(x0, masks, mask_token):
@@ -169,6 +209,9 @@ def main():
 
     check_frozen_clean()
     check_protocol_hash()
+    exec_man = check_exec_manifest_against_cfg(cfg)
+    pilot_start_commit = subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT,
+                                        capture_output=True, text=True).stdout.strip()
     maps = load_maps_verified(os.path.join(ROOT, cfg.mechanism_v21.maps_dir))
 
     device = torch.device("cuda")
@@ -343,7 +386,12 @@ def main():
         protocol_version=PROTOCOL_VERSION,
         recipe_version=RECIPE_VERSION,
         protocol_sha256=PROTOCOL_SHA256,
+        errata_sha256=ERRATA_SHA256,
+        exec_manifest_sha256=EXEC_MANIFEST_SHA256,
+        lr=float(exec_man["lr"]["value"]),
+        lr_decision=exec_man["lr"]["v21_choice"],
         policy=policy, replicate=r,
+        pilot_start_commit=pilot_start_commit,
         git_commit=subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT,
                                   capture_output=True, text=True).stdout.strip(),
         maps_manifest_sha256=maps["file_sha256"]["maps_manifest.json"],
@@ -359,7 +407,6 @@ def main():
         grad_norms=grad_norms,
         grad_norm_rolling_window=100,
         fixed_evals=fixed_evals,
-        lr=cfg.optim.lr,
         warmup=cfg.optim.warmup,
         stream_seeds={k: stream_seed(k, r) for k in
                       ("h_pair", "h_orient", "l_pair", "l_orient",

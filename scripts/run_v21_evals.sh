@@ -20,6 +20,17 @@ ACTUAL=$(sha256sum manifests/regime_a_eval_v1.jsonl | cut -d' ' -f1)
 [ "$ACTUAL" == "$EXPECTED_MANIFEST" ] || { echo "FATAL: manifest hash 变化"; exit 1; }
 echo "OK: manifest hash 未变"
 
+EXPECTED_PROTOCOL=af312d864d41d8f67da343d55a8dee8a29a91c37dea622e6b2c4b22ef441fc61
+AP=$(sha256sum protocol/mechanism_complementary_exposure_v2_1.md | cut -d' ' -f1)
+[ "$AP" == "$EXPECTED_PROTOCOL" ] || { echo "FATAL: 协议 sha256 变化"; exit 1; }
+EXPECTED_ERRATA=d099aaaaa7732d98467a3cc43d5d6b936f32322252b7f291c298a0731af951b0
+AE=$(sha256sum protocol/mechanism_v2_1_errata.md | cut -d' ' -f1)
+[ "$AE" == "$EXPECTED_ERRATA" ] || { echo "FATAL: errata sha256 变化"; exit 1; }
+EXPECTED_EXECMAN=5cb816f32e6c53d696625a3a233bd11e54f3be229aff38933c69593821eb3b25
+AM=$(sha256sum protocol/mechanism_v2_1_execution_manifest.json | cut -d' ' -f1)
+[ "$AM" == "$EXPECTED_EXECMAN" ] || { echo "FATAL: execution manifest sha256 变化"; exit 1; }
+echo "OK: 协议/errata/execution manifest sha256 未变"
+
 declare -A RUNS=( [U1]="U 1" [H1]="H 1" [L1]="L 1" [U2]="U 2" [H2]="H 2" [L2]="L 2" )
 shopt -s nullglob
 

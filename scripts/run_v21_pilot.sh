@@ -20,6 +20,14 @@ AP=$(sha256sum protocol/mechanism_complementary_exposure_v2_1.md | cut -d' ' -f1
 [ "$AP" == "$EXPECTED_PROTOCOL" ] || { echo "FATAL: 协议 sha256 变化: $AP"; exit 1; }
 echo "OK: protocol sha256 未变"
 
+EXPECTED_ERRATA=d099aaaaa7732d98467a3cc43d5d6b936f32322252b7f291c298a0731af951b0
+AE=$(sha256sum protocol/mechanism_v2_1_errata.md | cut -d' ' -f1)
+[ "$AE" == "$EXPECTED_ERRATA" ] || { echo "FATAL: errata sha256 变化: $AE"; exit 1; }
+EXPECTED_EXECMAN=5cb816f32e6c53d696625a3a233bd11e54f3be229aff38933c69593821eb3b25
+AM=$(sha256sum protocol/mechanism_v2_1_execution_manifest.json | cut -d' ' -f1)
+[ "$AM" == "$EXPECTED_EXECMAN" ] || { echo "FATAL: execution manifest sha256 变化: $AM"; exit 1; }
+echo "OK: errata + execution manifest sha256 未变"
+
 if ! git diff --quiet HEAD -- losses.py graph_lib.py noise_lib.py data.py \
      training/vanilla.py task_data/corruption.py task_data/policy_corruption.py model/ \
      task_data/v21_policy.py evaluation/eval_cpi_pairs.py evaluation/eval_order_gap_subset.py; then
@@ -42,6 +50,13 @@ declare -A RUNS=( [U1]="U 1" [H1]="H 1" [L1]="L 1" [U2]="U 2" [H2]="H 2" [L2]="L
 for run in U1 H1 L1 U2 H2 L2; do
   set -- ${RUNS[$run]}
   pol=$1; rep=$2
+  # 磁盘安全线（execution manifest）：D: free < 15GB → 完成当前 run 后停止，不启动下一 run
+  FREE_GB=$(df -k /mnt/d 2>/dev/null | tail -1 | awk '{print int($4/1024/1024)}')
+  if [ -n "$FREE_GB" ] && [ "$FREE_GB" -lt 15 ]; then
+    echo "FATAL: D: free = ${FREE_GB}GB < 15GB — 停止启动下一 run，请报告"
+    exit 1
+  fi
+  echo "D: free = ${FREE_GB}GB（安全线 15GB）"
   meta=$(ls -1t exp_local/regime_a/v21pilot-${run}-*/run_metadata.json 2>/dev/null | head -1 || true)
   if [ -n "$meta" ]; then
     log=${meta%/*}/train.log
