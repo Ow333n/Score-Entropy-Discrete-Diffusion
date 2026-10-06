@@ -11,11 +11,12 @@
   "replicates": {
     "1": {
       "schedule_sha256": {
-        "A": "00dccdb455ccbd4ee120810798c562d6486478e9c2070d4c5b82df2821e3b0ca",
-        "B": "00dccdb455ccbd4ee120810798c562d6486478e9c2070d4c5b82df2821e3b0ca",
-        "C": "00dccdb455ccbd4ee120810798c562d6486478e9c2070d4c5b82df2821e3b0ca",
-        "D": "00dccdb455ccbd4ee120810798c562d6486478e9c2070d4c5b82df2821e3b0ca"
+        "A": "379c1b173553ad3a67767fdfda8a52c68c80b15d656fce61df4de184edc555b3",
+        "B": "379c1b173553ad3a67767fdfda8a52c68c80b15d656fce61df4de184edc555b3",
+        "C": "379c1b173553ad3a67767fdfda8a52c68c80b15d656fce61df4de184edc555b3",
+        "D": "379c1b173553ad3a67767fdfda8a52c68c80b15d656fce61df4de184edc555b3"
       },
+      "shared_schedule_sha256": "7b76dcfb3ae785feb91c86e1e4381cd6e6da674c79f1fb72c12bdc9f660d017b",
       "policy_hashes_equal": true,
       "stats": {
         "A": {
@@ -46,11 +47,12 @@
     },
     "2": {
       "schedule_sha256": {
-        "A": "12412bdfee2b386df06d93b3c26066528730a0fad89a19cb88bd232743e421e9",
-        "B": "12412bdfee2b386df06d93b3c26066528730a0fad89a19cb88bd232743e421e9",
-        "C": "12412bdfee2b386df06d93b3c26066528730a0fad89a19cb88bd232743e421e9",
-        "D": "12412bdfee2b386df06d93b3c26066528730a0fad89a19cb88bd232743e421e9"
+        "A": "532032c9b256d9d9e80cc4062d1244df77e02e7dd0ebe34423e575f1579702af",
+        "B": "532032c9b256d9d9e80cc4062d1244df77e02e7dd0ebe34423e575f1579702af",
+        "C": "532032c9b256d9d9e80cc4062d1244df77e02e7dd0ebe34423e575f1579702af",
+        "D": "532032c9b256d9d9e80cc4062d1244df77e02e7dd0ebe34423e575f1579702af"
       },
+      "shared_schedule_sha256": "ace3eec9434ca668c254e0d281e4c4be25b3494611b1d344e893780bd5f6c1a2",
       "policy_hashes_equal": true,
       "stats": {
         "A": {

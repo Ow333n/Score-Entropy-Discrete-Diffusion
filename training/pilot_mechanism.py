@@ -131,6 +131,9 @@ def main():
     micro_batch = cfg.training.batch_size // (cfg.ngpus * cfg.training.accum)
     train_ds = get_dataset("wikitext103", "train", cache_dir=cfg.data.cache_dir,
                            block_size=cfg.data.seq_len, num_proc=4)
+    # 与 frozen vanilla.py 完全一致的消费语义：每步 next(iter(loader)) →
+    # 每步重新 randperm（同一 data_order generator 状态推进）→ 跨 policy 由
+    # 相同种子保证逐位一致的数据顺序。
     train_loader = build_dataloader(train_ds, micro_batch, stream_seed("data_order", r))
 
     sched = SharedSchedule(r, cfg.data.seq_len, cfg.data.span_min, cfg.data.span_max,
@@ -192,11 +195,13 @@ def main():
                 torch.save(dict(model=score_model.state_dict()), raw_path)
                 log(f"raw weights: {raw_path}")
 
-    # 结束守卫：schedule SHA-256 与 preflight 参考一致
+    # 结束守卫：shared schedule（四元组 σ/dσ/span/K）SHA-256 与 preflight 参考一致
+    # 注：与 dry-run 的 shared_schedule_sha256 同一 digest 定义
+    # （五元组含 sample_id 的摘要仅 dry-run 记录，训练不比对——DataLoader 语义见下）
     ref_path = os.path.join(ROOT, "results", "mechanism_pilot_dryrun",
                             "dryrun_summary.json")
     ref = json.load(open(ref_path))
-    ref_hash = ref["replicates"][str(r)]["schedule_sha256"]["A"]
+    ref_hash = ref["replicates"][str(r)]["shared_schedule_sha256"]
     if sched.hexdigest() != ref_hash:
         raise RuntimeError(
             f"schedule hash mismatch: got {sched.hexdigest()[:16]}… "

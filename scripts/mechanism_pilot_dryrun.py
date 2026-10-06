@@ -32,9 +32,6 @@ def replay_with_policy(r, policy, n_steps, micro_batch, N_chunks, cfg):
     返回 (schedule_sha256, K_all, sigma_all, span_len_all, n_masks_total)。
     """
     g_data = make_generator("data_order", r)
-    perm = torch.randperm(N_chunks, generator=g_data)
-    sample_ids = perm[: n_steps * micro_batch]
-
     sched = SharedSchedule(r, cfg.data.seq_len, cfg.data.span_min,
                            cfg.data.span_max, noise=None)
     g_a = make_generator("policy_a", r)
@@ -43,10 +40,13 @@ def replay_with_policy(r, policy, n_steps, micro_batch, N_chunks, cfg):
 
     digest = hashlib.sha256()
     K_all, sigma_all, span_len_all, n_masks = [], [], [], 0
-    for i in range(0, sample_ids.numel(), micro_batch):
+    for _ in range(n_steps):
+        # 与训练一致的数据顺序语义（frozen vanilla.py）：每步新 iterator →
+        # 每步重抽 randperm，取前 micro_batch 个 id。
+        sample_ids = torch.randperm(N_chunks, generator=g_data)[:micro_batch]
         sigma, dsigma, span_len, span_start, K = sched.draw(micro_batch)
         K_all.append(K); sigma_all.append(sigma); span_len_all.append(span_len)
-        digest.update(sample_ids[i:i + micro_batch].numpy().tobytes())
+        digest.update(sample_ids.numpy().tobytes())
         for arr in (sigma, dsigma, span_len, span_start, K):
             digest.update(arr.numpy().tobytes())
         # 实际 policy execution path（A 消耗自身流；B 用 π_L；C/D 确定性）
@@ -58,8 +58,8 @@ def replay_with_policy(r, policy, n_steps, micro_batch, N_chunks, cfg):
             n_masks += sel.numel()
             if sel.numel() != int(K[j].item()):       # |M|==K 不变量
                 raise RuntimeError(f"{policy}: |mask|={sel.numel()} != K={int(K[j])}")
-    return (digest.hexdigest(), torch.cat(K_all).float(), torch.cat(sigma_all),
-            torch.cat(span_len_all).float(), n_masks)
+    return (digest.hexdigest(), sched.hexdigest(), torch.cat(K_all).float(),
+            torch.cat(sigma_all), torch.cat(span_len_all).float(), n_masks)
 
 
 def main():
@@ -86,11 +86,12 @@ def main():
 
     print(f"重放规模：{n_steps} 步 × {micro_batch} items = {n_items} 五元组/run（×4 policy × 2 replicate）")
     for r in (1, 2):
-        hashes, stats = {}, {}
+        hashes, shared_hashes, stats = {}, {}, {}
         for policy in POLICIES:
-            h, Kt, st, mt, n_masks = replay_with_policy(r, policy, n_steps,
-                                                        micro_batch, N_chunks, cfg)
+            h, h_shared, Kt, st, mt, n_masks = replay_with_policy(
+                r, policy, n_steps, micro_batch, N_chunks, cfg)
             hashes[policy] = h
+            shared_hashes[policy] = h_shared
             q_t = 1 - (-st).exp()
             # Preflight 1: 经验 mean(K_t) vs 经验 mean(m_t·q_t)
             z = (Kt.mean() - (mt * q_t).mean()) / (
@@ -99,17 +100,21 @@ def main():
                                  mq_mean=float((mt * q_t).mean()),
                                  z_score=float(z),
                                  n_masks_total=n_masks)
-            print(f"  r={r} policy {policy}: hash={h[:16]}… "
+            print(f"  r={r} policy {policy}: five_tuple={h[:16]}… shared={h_shared[:16]}… "
                   f"mean(K)={Kt.mean():.4f} mean(m·q)={(mt*q_t).mean():.4f} "
                   f"z={z:+.3f} Σ|mask|={n_masks}")
         all_equal = len(set(hashes.values())) == 1
-        print(f"  r={r}: schedule_hash_A==B==C==D: {all_equal}")
+        shared_equal = len(set(shared_hashes.values())) == 1
+        print(f"  r={r}: 五元组 hash_A==B==C==D: {all_equal} | "
+              f"四元组 shared hash 一致: {shared_equal}")
         summary["replicates"][str(r)] = dict(
-            schedule_sha256=hashes, policy_hashes_equal=all_equal, stats=stats)
+            schedule_sha256=hashes,
+            shared_schedule_sha256=shared_hashes["A"],
+            policy_hashes_equal=all_equal, stats=stats)
 
-    h1 = summary["replicates"]["1"]["schedule_sha256"]["A"]
-    h2 = summary["replicates"]["2"]["schedule_sha256"]["A"]
-    print(f"\nreplicate 1 != replicate 2: {h1 != h2}")
+    h1 = summary["replicates"]["1"]["shared_schedule_sha256"]
+    h2 = summary["replicates"]["2"]["shared_schedule_sha256"]
+    print(f"\nreplicate 1 != replicate 2 (shared): {h1 != h2}")
     print(f"preflight 1 (K sanity)：全部 |z| < 3 判定通过："
           f"{all(abs(summary['replicates'][k]['stats'][p]['z_score']) < 3 for k in ('1','2') for p in POLICIES)}")
     print(f"preflight 2 (跨 policy 哈希一致)："
