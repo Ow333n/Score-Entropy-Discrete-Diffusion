@@ -371,3 +371,11 @@
 - [x] **smoke 3×100 步全 PASS**（v21smoke-U1/H1/L1，各 1.9GB）：digest 031b537b… 与 dryrun prefix 一致、E_comp 0.3322/0.4775/0.0394、C̄ −0.0079/−0.0559/+0.0899、loss finite 零 NaN、VRAM 6.41GB alloc/7.32GB resv（与 v1.2 一致）、checkpoint 契约（EMA-only + raw，frozen evaluator 直接可读）、exact-K 0 违反、grad_norm pre 10.4→19.9（post-clip 恒 1.0，clip=1.0 生效中）
 - [x] **step0 冻结基线（训练前）**：treated r1=0.3480±0.0103 / r2=0.3427±0.0098、heldout=0.3444±0.0084（local CE 4.276 与 frozen 基线 4.281 吻合）、OG subset（64）=12.35±1.14、path-score Var 33.29（confidence 路径最差，与 full-set 模式一致）
 - [ ] **当前状态**：正式 6-run pilot 未启动；等用户批准（运行命令/时长/磁盘预估见回报）
+
+### v2.1 provenance patch + 正式 pilot 批准（2026-10-06 深夜）
+
+- [x] **用户批准正式 6-run pilot**；LR 裁定 **3e-4**（v1.2 实际执行口径；文本 3e-5 不静默改写，记入 execution manifest）
+- [x] **provenance patch**（commit 2c72124，已 push）：`protocol/mechanism_v2_1_execution_manifest.json`（sha256 5cb816f3…，全部实际超参写死 + LR/dropout 裁定 + step0 基线 + stop rules + 磁盘安全线 15GB）+ `protocol/mechanism_v2_1_errata.md`（sha256 d099aaaa…：① odd-m cycle-edge active-phase 数 erratum（(m−1)/2 非 2）② degenerate-K E_comp 度量 artifact ③ LR/dropout 实际执行记录）；训练脚本加 errata/manifest sha 校验 + manifest-vs-cfg 逐项交叉核对 + metadata 增 pilot_start_commit；driver 加 D: free ≥15GB 每-run 检查
+- [x] **⚠️ 重大发现（provenance patch 期）**：hydra 合并语义下 `model: small` 在 defaults 中排在 `_self_` 之后 → small.yaml 的 **dropout=0.1 覆盖 vanilla_256.yaml 的 dropout: 0.0** → **全部既往 SFT/mechpilot run 与 v2.1 smoke 实际都在 dropout=0.1 下训练**（v1.2/v2.1 协议文本"dropout=0"从未在执行中成立；模型 train 模式确实应用 dropout）。确定性不受损（checkpoint 保存/恢复 RNG state + p1 Gate-2 逐字节复现实证）。按 LR 同一裁定原则固定 **dropout=0.1 = actual executed setting**，透明记录不改旧文本
+- [x] push 完成：**HEAD == origin/main == 2c7212444aae16fa7b3d5eb5ac88d91a76ef5b82（正式 pilot start commit）**，tree clean
+- [ ] **正式 pilot 启动命令已交用户**（tmux）：`bash scripts/run_v21_pilot.sh`（U1→H1→L1→U2→H2→L2，~2h）→ 完成后 `bash scripts/run_v21_evals.sh`（~3-3.5h）；任何 run NaN/OOM/hash/schedule/checkpoint 异常 → 驱动自动硬停；D: free <15GB → 完成当前 run 后停止
