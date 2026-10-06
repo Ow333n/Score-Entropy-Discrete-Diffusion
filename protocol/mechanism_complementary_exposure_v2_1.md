@@ -1,10 +1,20 @@
 # Mechanism Pilot v2.1 — Complementary Exposure Protocol
 
-**状态：FINAL v1.0（候选冻结版；用户已基本批准，修订三点后待最终冻结确认；未经冻结确认禁止实现/训练）**
+**状态：FINAL v1.1 — FROZEN（冻结后禁止修改 hypothesis / gate / Case 定义 / 措辞纪律）**
 **修订记录（v0.1 DRAFT → v1.0 FINAL，用户裁定）**：
 1. odd-m singleton 硬币明确 `s ~ Bernoulli(K/m)`；补 K=0 / K=m 边界与 marginal 推导（§5/§6）
 2. G3a 的 strict E_H>E_U>E_L 仅作用于 non-degenerate K∈[2,m−2]；K∈{0,1,m−1,m} 单独报告、不得构成 FAIL（§11 G3a-5、§7.3）
 3. treated/heldout CPI evaluator 训练前冻结；训练 RNG 完全隔离；H/U/L 同 replicate 共享 sample/span/context；heldout edges 与 training treated edges 不重叠（§9、§14）
+**修订记录（v1.0 FINAL → v1.1 FINAL — FROZEN，专家 review 吸收）**：
+4. **1A 措辞纪律**：P1/P2 结论统一表述（§1.1），禁止"已被证明无效"类措辞
+5. **1B mask-structure confound diagnostics**：run-length / adjacency / transition / pair-distance 分桶等 7 项只读诊断（§7.6、G3a），区分 intended 与 confound，不新增 gate 要求
+6. **1C calibration / scale diagnostics**：score scale、masked-token calibration、temperature-scaled CPI 的严谨定义与限制（§9.4，secondary，不入 G3 primary；退化为 δ/T 时标记 deferred）
+7. **1D 小型 global path metric**：step2500 专属 frozen 子集 OrderGap + path-score variance（§9.5，secondary，不入 G3c primary）
+8. **1E U baseline 分析预注册**：primary contrast H vs L；secondary H vs U、U vs L；dose-like H<U<L 非 PASS 必需，U 不居中按预注册规则解释（§11 G3c）
+9. **1F 训练期机制诊断 logging**：loss 轨迹、gradient norm(+rolling variance 近似)、per-checkpoint task NLL/acc（§10，零/低成本，不做 per-example gradient）
+10. **1G 两阶段设计**：pilot（6 runs）→ Confirmatory（≥4 total paired replicates + power analysis）的进入条件预注册（§15.1）
+11. **1H dose-response follow-up**：λ-interpolation（H/U 混合 policy）仅在 Future Confirmatory Stage 定义，本 pilot 不执行（§15.2）
+12. **1I 明确 defer 的大型扩展**：full-mask SFT / AR SFT / 多规模 / 跨域 / 多 K 独立训练 / 5 seeds 首跑——全部归入"if mechanism survives pilot" future work（§15.3）
 **前身**：`protocol/mechanism_complementary_exposure_v2.md`（DRAFT，已废弃——pairing 每步 fresh random 会被边缘化回 uniform，identifiability 失效）
 **v1.2 结论依据**：`reports/mechanism_pilot_v1_2_report.md`（FROZEN，tag `mechanism-pilot-v1.2-frozen`）
 
@@ -28,7 +38,15 @@ v2.1 直接操纵该频率（而不是再间接操纵 fresh-random 程度）：
 
 > 对训练中定义的一组 treated pair (a,b)：**P(exactly one of a,b is masked)**，H 最大 / U 自然 / L 最小；其余（K、样本、span、σ、单位置 marginal）尽量一致。
 
-## 2. 预注册假设（DRAFT）
+## 1.1 措辞纪律（1A，FROZEN）
+
+对 v1.2 的 P1（Fresh vs Fixed Random）与 P2（L2R vs R2L directional）：
+
+- **禁止**："Fresh random 已被证明无效"、"Directional exposure 已被证明无效"、"已被证明不影响 order" 及任何等价措辞。
+- **统一表述**："no stable supporting evidence under the current pilot" / "INCONCLUSIVE under the current pilot setting"。
+- 语义：pilot 只是**没有检测到稳定证据**，不是证明 null；两者在统计与科学含义上不可互换。
+
+## 2. 预注册假设（FROZEN）
 
 - **H_c（complementary-exposure mechanism）**：E_comp 更高的 policy 在 SFT 后产生更强的 global reveal-order compatibility attenuation：CPI_global(H) < CPI_global(L)，U 介于两者（dose-like，非强制单调）。
 - **H_local**：intervention 首先作用于被直接操纵的 treated pairs：CPI_treated(H) < CPI_treated(L)。
@@ -172,6 +190,20 @@ H 是 pair-type pattern (b_max, a) 上的均匀分布，U 在该 pattern 类上�
 - m=50,K=25：max_i |rate_i − K/m| = 0.0027（采样噪声量级，非偏差）
 - m=49,K=24（odd bank）：0.0027 ✓
 
+### 7.6 Mask-structure confound diagnostics（1B，只读，不入 gate 阈值）
+
+专家 review 指出：即使 exact K 与单位置 marginal 相同，H/U/L 仍可能连带改变更高阶 mask structure。除 intended pairwise correlation 外，必须**记录**这些连带几何差异（`design 期闭式/枚举 + 训练流实测 + 分桶报告`），以便 G3 判读时区分 intended 与 confound：
+
+1. **mask run-length distribution**（连续被 mask 位置的 run 长度直方图）
+2. **visible-token run-length / adjacency statistics**（连续可见 run 长度、相邻可见对频率）
+3. **masked-visible transition count**（沿位置的 mask↔visible 切换数，≈2×discordant 相关量）
+4. **treated pair distance distribution**——**H/U/L 必须逐位相同**（同 replicate 共享同一 frozen map，pair 距离结构由 map 决定、与 policy 无关）；按 near / medium / far 分桶报告
+5. **relative-position / L-R trend**（与 G3a-4 同一口径，扩展为逐相对位置 mask 率表）
+6. **context-visible-count**（应由 exact K 与共享 corruption context 决定，H/U/L 相同——作为共享性 sanity check）
+7. **non-treated pair correlation summary**（非 treated 边对的 mask 协方差分布摘要：mean / P10 / P50 / P90）
+
+**解释规则（FROZEN）**：不要求三 policy 的高阶结构完全一致——intervention 本身就必须改变 treated-pair joint structure。目标仅是**知道**除 intended pairwise correlation 外还有哪些 mask geometry 被连带改变；若发现意外的大幅 confound（如某 policy 的 mask 空间聚类显著偏离另两者且无法由设计解释），在报告中披露并讨论，**不追溯改 gate**。
+
 ## 8. Exposure metric E_comp（intervention diagnostic，非机制证明）
 
 - **定义**：`E_comp = E[# exactly-one-masked active pairs / # active pairs]`（active pairs：even m 恒 n=m/2；odd m 当前 phase 的 n=(m−1)/2，singleton 不计）。
@@ -193,15 +225,39 @@ H 是 pair-type pattern (b_max, a) 上的均匀分布，U 在该 pattern 类上�
 
 **成本注**：treated/heldout 每 sample 需 m/2（even）或 m（odd）对 × 3 forward；span m≤50 ⇒ ≤150 forward/sample，500 样本 ⇒ ≤75k forward，pilot 规模可接受。
 
+### 9.4 Calibration / scale diagnostics（1C，secondary/exploratory，不入 G3 primary）
+
+Primary 不变：CPI_global_abs；继续报告 signed mean δ、CPI_RMS、δ quantiles（P10/P25/P50/P75/P90/P95）、masked-token NLL、token accuracy。
+
+新增：
+
+1. **probability / score scale summary**：local CE（masked-position NLL）、log-prob 对 {log p(a|C), log p(b|C,a), log p(b|C), log p(a|C,b)} 的均值/SD、δ_SD 相对 local CE 的比值——刻画 compatibility 信号的绝对量级。
+2. **masked-token calibration diagnostic**（若 frozen evaluator 路径可可靠实现）：per-position 预测置信度（argmax token 的预测概率）分桶 vs 经验命中率（reliability 曲线）。由 treated/heldout evaluator 模块的 per-position 打分路径顺带产出；若实现成本显著或不可靠，标记 deferred 并说明原因（不硬凑）。
+3. **post-hoc temperature-scaled CPI**：数学定义（SEDD score-ratio 结构下）：`log p_T(x|·) = log p(x|·)/T − log Z_T` ⇒ δ-swap 中 log Z_T 相消 ⇒ **δ_T = δ/T，CPI_abs(T) = CPI_abs(1)/T**——纯尺度退化，不新增分布形状信息。因此：
+   - 标准 softmax temperature scaling **无法为 δ-swap 提供非平凡校准**；本协议将 temperature-scaled CPI 标记为 **deferred / exploratory**，理由是数学退化（δ_T = δ/T），不是实现困难；
+   - 替代做法：报告 2 的 reliability 曲线 + δ quantiles（形状信息），以及 δ_SD/local CE 尺度比；
+   - 若未来对单边条件概率（log p(a|C) 等）做 calibration，须用独立 calibration split（与 CPI test samples 不相交）、H/U/L 用同一 fitting procedure、只作 secondary、不入 G3 primary gate。当前不执行。
+
+### 9.5 小型 global path metric（1D，secondary，不入 G3c primary）
+
+为验证 local swap metric 与 global reveal-order behavior 的对应关系：
+
+- **在 step2500 最终 checkpoint（+step0 baseline）上**，对一个**训练前冻结**的小型 evaluation subset（frozen manifest 的固定子集，例如按 frozen 规则抽取的 64 样本；索引列表落盘 + sha256，H/U/L、rep1/rep2 完全共享）额外计算：
+  - **OrderGap**（frozen 6 路径口径，`evaluation/eval_order_gap.py` 复用于子集）；
+  - **path-score variance**：per sample 6 条冻结路径得分的方差，跨样本平均——量化单一样本内揭示顺序的 score 离散度。
+- 要求：子集训练前冻结；evaluator RNG 独立于 training；只在 step2500（+step0）跑，不跑全部 checkpoint；secondary，**不进入 G3c primary gate**。
+- 目标：检查 CPI 改善是否伴随 global path sensitivity 下降（相关性报告，非因果 gate）。
+
 ## 10. Pilot 结构（审批后才执行）
 
 - **Runs**：U/H/L × 2 training replicates = **6 runs**；SEDD-small，seq 256，span [10,50]，batch 32，2500 steps，dropout=0，同一 pretrained 初始化，共享 step0。
 - **Checkpoints**：EMA @500/1020/2500 + raw @2500（同 v1.2 容器契约）。
 - **Seeds**：共享四元流沿用 1000+r…4000+r 约定；policy 流：H pair-choice 8001+r / H orient 8101+r / L pair-choice 8201+r / L orient 8301+r / U uniform 8401+r / singleton coin（仅 odd m）8501+r；dropout 7001+r。frozen evaluator 随机流不动。
-- **Metrics**：primary = masked-span NLL、token acc、CPI_global_abs、CPI_global_RMS；secondary = signed δ、CPI_treated、CPI_heldout、E_comp、C̄_treated。**OrderGap 暂不跑。**
+- **Metrics**：primary = masked-span NLL、token acc、CPI_global_abs、CPI_global_RMS；secondary = signed δ、δ quantiles（P10/P25/P50/P75/P90/P95）、CPI_treated、CPI_heldout、E_comp、C̄_treated、§9.4 校准/尺度诊断、§9.5 step2500 frozen 子集 OrderGap + path-score variance。OrderGap **仅**在 step2500（+step0）frozen 子集上跑，不跑全 checkpoint。
+- **训练期 logging（1F，零/低成本，不改 objective）**：train loss 轨迹；gradient norm（每 100 步记录 + rolling variance 近似，**不做 per-example gradient**）；H/U/L 每 checkpoint 的 task NLL/acc（评估计划已含）。
 - **存储**：6 × ~2.6GB ≈ 15.7GB + maps/结果 <0.1GB（磁盘计划见 §13）。
 
-## 11. Gate（四层，DRAFT）
+## 11. Gate（四层，FROZEN）
 
 **G3a — Intervention validity（全部必须 PASS，任一 FAIL ⇒ 禁止机制解释）**
 1. exact K per item（训练流断言；含 odd-m singleton 硬币后的 K−s 分解可行性断言）；
@@ -210,13 +266,18 @@ H 是 pair-type pattern (b_max, a) 上的均匀分布，U 在该 pattern 类上�
 4. 无 L/R 趋势（discordant pair 左/右 mask 计数差 ≈ 0）；
 5. E_comp：**strict H > U > L 仅对 non-degenerate K∈[2,m−2] 判**（修订 #2）；K∈{0,1,m−1,m} 单独报告（计数/占比表，三 policy 应全相等），**不得构成 FAIL**；pooled overall 口径 H > U > L 且分桶与闭式一致；
 6. mask distributions 可区分（§7 设计期 exact TV > 0 + 实测 C̄_treated 排序 H<U<L；K∈{0,1,m−1,m} 除外，单独报告）；
-7. pairing/bank hash 正确（frozen map 文件 sha256 与加载校验一致）；heldout 与 training treated edges 不重叠断言通过。
+7. pairing/bank hash 正确（frozen map 文件 sha256 与加载校验一致）；heldout 与 training treated edges 不重叠断言通过；
+8. **confound diagnostics 记录（1B，非 gate 阈值）**：§7.6 的 7 项全部产出并分桶报告；判读时区分 intended structural difference 与 unwanted confound——**不要求** H/U/L 的所有 pairwise/joint mask statistics 相同（intervention 本身就要改变 treated-pair correlation），只要求逐项记录与披露。
 
 **G3b — Local manipulation check**：CPI_treated_H < CPI_treated_L，两 training replicate 点估计同向；per-replicate paired bootstrap（10k, seed=0）+ 按 replicate 聚类 pooled CI（同 v1.2 口径）。PASS 仅允许"intervention locally affects treated pairs"表述。
 
-**G3c — Global mechanism signal（primary）**：CPI_global_H < CPI_global_L，两 replicate 同向；CI 判据同 G1a。U 的 H<U<L 为 dose-like secondary evidence（不强制完美单调）；CPI_heldout 同向为 generalization evidence。
+**G3c — Global mechanism signal（FROZEN，1E）**
+- **Primary causal contrast：H vs L**（intervention contrast 最大的一组）：CPI_global_abs_H < CPI_global_abs_L，两 replicate 同向；CI 判据同 G1a。
+- **Secondary 预注册对比**：H vs U、U vs L（各自 per-rep paired bootstrap + 聚类 CI）；最理想的 dose-like ordering 为 CPI_H < CPI_U < CPI_L——**严格 H<U<L 不是 primary PASS 必需条件**。
+- **U 位置的解释规则（预注册，禁止事后改）**：若 H<L 成立且 U 居中 → dose-like support；若 H<L 但 U 不居中（U ≤ H 或 U ≥ L）→ H vs L primary contrast 仍按原判据判定，U 偏离作为 unexpected mask-structure effect 在报告中披露讨论，不重新解释 hypothesis。
+- **其他 secondary 证据**：CPI_RMS、signed δ、δ quantiles、CPI_heldout 同向（generalization evidence）、§9.5 OrderGap subset / path-score variance 同向（global path sensitivity 对应性）、§9.4 诊断。均不入 primary PASS 条件。
 
-**G3d — Matched performance**：masked NLL ±0.02 / token acc ±0.01（沿用 §5.3 配对规则与 checkpoint 池）；no overlap ⇒ **INCONCLUSIVE（非 FAIL）**；匹配后重做 G3c。
+**G3d — Matched performance**：masked NLL ±0.02 / token acc ±0.01（沿用 §5.3 配对规则与 checkpoint 池，**匹配规则事前冻结，禁止后验选 checkpoint**）；同时报告 CI；no overlap ⇒ **INCONCLUSIVE（非 FAIL）**；匹配后重做 G3c。
 
 **结论语言（预注册）**：
 - G3a+G3c+G3d 全 PASS ⇒ "Results support complementary partial-conditioning exposure as a driver of global reveal-order compatibility attenuation."
@@ -236,17 +297,46 @@ H 是 pair-type pattern (b_max, a) 上的均匀分布，U 在该 pattern 类上�
 ## 13. 磁盘与预算（v2.1 训练前必须复核）
 
 当前（2026-10-06）：D: free ≈ **18GB**；VHDX ≈ 116.7GB；exp_local ≈ 95GB。
-v2.1 新增：≈15.7GB checkpoints + <0.1GB 其他 ≈ **16GB**；安全要求 = 16 + ≥10GB margin ⇒ **需 D: free ≥ 26GB**。
-⇒ 当前不满足。训练前需受控清理（候选：p1-s1/p1-s2 等已退役 stage 资产，**须用户逐项确认，禁止碰 v1.2 frozen 资产**）+ Windows DiskPart compact（既有流程）。禁止边跑边赌磁盘。
+v2.1 新增：≈15.7GB checkpoints + <0.1GB 其他 ≈ **16GB**；最低安全要求 = 16 + ≥10GB margin = 26GB。
+**正式训练前目标（FROZEN）：D: free ≥ 30GB，最好 ≥ 35GB**——不以 26GB 卡边。
+路径：先做**只读 disk retirement audit**（候选 p1-s1/p1-s2：优先"保留 final checkpoint + logs + metadata + frozen analysis，只删 dense intermediate"，见 preflight plan P4）→ 用户逐项批准 → Linux 内删除 → DiskPart compact → 复核（D: free 达标 + v1.2 资产 sha256 抽查）。**禁止边跑边赌磁盘；禁止碰 mechpilot v1.2 / v1.2 report / P1/P2 JSON / protocol / manifests / git / 正式 SFT-RL 关键资产。**
 
-## 14. 执行顺序（审批后）
+## 14. 执行顺序（FROZEN）
 
-1. 本协议用户冻结确认（sha256 落盘，不再改动）
+1. 本协议冻结（v1.1 sha256 落盘，不再改动）
 2. frozen pair/bank map 生成 + sha256（rep1/rep2/heldout）+ heldout 不重叠断言落盘
-3. **treated/heldout CPI evaluator 实现并冻结（训练前，修订 #3）**：代码 + heldout map + pair 定义全部落盘 sha256；此后禁止修改
+3. **treated/heldout CPI evaluator 实现并冻结（训练前，修订 #3）**：代码 + heldout map + pair 定义全部落盘 sha256；此后禁止修改；§9.5 OrderGap frozen 子集（索引列表 + sha256）同期冻结
 4. G3a 设计期 preflight 复跑（§7 脚本 + 训练流 dry-run：digest / exact-K / phase 消耗核对）
-5. **磁盘清理（前置条件：D: free ≥ 26GB = 16GB 新增 + 10GB margin）**：候选退役资产经用户逐项确认后删除 → DiskPart compact → 复核 v1.2 资产完整性
-6. 6 run 训练（driver：manifest hash / frozen 文件 / map hash 守卫）→ 18 checkpoint 评估（global CPI/task）+ treated/heldout CPI
-7. G3a/b/c/d 分析 → 报告 → 冻结
+5. **磁盘前置**：只读 retirement audit → 用户批准删除清单 → 清理 → DiskPart compact → D: free ≥30GB（最好 ≥35GB）复核 + v1.2 资产完整性抽查
+6. **Implementation + 测试**：mask policy / odd-m bank / H-U-L 采样 / evaluator（treated/heldout/OrderGap 子集）/ logging——先 **unit tests**，再 **50–100 step smoke test**（检查：exact K、schedule hash、map hash、H/U/L 同 sample/span/σ/K、无 RNG 污染、marginal parity、E_comp 排序、covariance 排序、loss finite、VRAM、磁盘增长、checkpoint 契约）。**全部 PASS 才允许正式 6-run pilot。**
+7. 6 run 训练（driver：manifest hash / frozen 文件 / map hash 守卫）→ global CPI/task 评估 + treated/heldout CPI + §9.5 step2500 OrderGap subset
+8. G3a/b/c/d 分析 → 报告 → 冻结
 
-**当前禁止**：实现 mask policy 代码、实现 treated/heldout evaluator、生成大 checkpoint、启动任何训练——须用户按本表逐项放行。
+**当前禁止**：实现 mask policy 代码、实现 treated/heldout evaluator、生成大 checkpoint、启动任何训练、rm/compact——须用户按本表逐项放行。
+
+## 15. 两阶段设计与未来工作（1G/1H/1I，FROZEN）
+
+### 15.1 Pilot → Confirmatory 进入条件（1G）
+
+v2.1 当前仍是 pilot：H/U/L × 2 paired replicates = 6 runs，**不扩到 3–5 seeds**。
+进入 Confirmatory Stage 的预注册条件（须同时满足）：
+1. G3a PASS；
+2. H vs L global CPI 两 replicate 同方向；
+3. effect size 有研究意义（以 pilot 的 CI 宽度与 δ_SD 效应量基线评估，判定在报告中给出）；
+4. performance matching 可行（G3d 非 INCONCLUSIVE）。
+满足后：Confirmatory 扩展到 **≥4 total paired replicates**（基于 pilot effect size / CI 做 power analysis 后再定总数）。
+若 pilot 无稳定 signal：**不盲目烧 15 个 runs**，按 Case 表收束。
+
+### 15.2 Dose-response follow-up（1H，仅 Future Confirmatory Stage 定义，本 pilot 不执行）
+
+若 H/L intervention 过强或 H/L performance 分离明显，下一阶段用 λ interpolation：
+`P(use H-style policy) = λ，P(use U-style policy) = 1−λ`（λ 由低到高），核心问题：λ ↑ 是否导致 CPI ↓。v2.1 pilot 仍只做 H/U/L。
+
+### 15.3 Deferred 大型扩展（1I，全部归入 "if mechanism survives pilot" future work）
+
+- full-mask SFT baseline、AR SFT baseline
+- 多模型规模、跨数据域
+- 大量不同 K 的独立训练
+- 一开始就跑 5 seeds
+
+以上均**不进入当前 pilot**，避免 scope explosion。
