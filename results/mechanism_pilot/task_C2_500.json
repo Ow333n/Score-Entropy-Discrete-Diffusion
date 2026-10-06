@@ -1,0 +1,17 @@
+{
+  "tag": "mechpilot-C2-500",
+  "model_path": "exp_local/regime_a/mechpilot-C2-191324",
+  "source": "local-ema (exp_local/regime_a/mechpilot-C2-191324)",
+  "step": 500,
+  "protocol_version": "v4.2",
+  "manifest_file": "manifests/regime_a_eval_v1.jsonl",
+  "manifest_sha256": "1897bd14bf92e61b2664a4950a3b60f14e09ac0d454d58d22e88815207f263d3",
+  "git_commit": "b601346b38dc3d2f6818bd41c4f41d1951c03148",
+  "masked_nll": 4.03125,
+  "masked_nll_sem": 0.07861176483397697,
+  "token_acc": 0.3409751057624817,
+  "token_acc_sem": 0.01000067561005207,
+  "greedy_per_pos_hit_rate": 0.4593988946990223,
+  "greedy_span_exact_match": 0.03,
+  "n_greedy": 100
+}
