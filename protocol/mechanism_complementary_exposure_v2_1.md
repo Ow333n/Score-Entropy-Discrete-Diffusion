@@ -1,6 +1,10 @@
 # Mechanism Pilot v2.1 — Complementary Exposure Protocol
 
-**状态：DRAFT v0.1（非冻结，待用户复核；未经审批禁止实现/训练）**
+**状态：FINAL v1.0（候选冻结版；用户已基本批准，修订三点后待最终冻结确认；未经冻结确认禁止实现/训练）**
+**修订记录（v0.1 DRAFT → v1.0 FINAL，用户裁定）**：
+1. odd-m singleton 硬币明确 `s ~ Bernoulli(K/m)`；补 K=0 / K=m 边界与 marginal 推导（§5/§6）
+2. G3a 的 strict E_H>E_U>E_L 仅作用于 non-degenerate K∈[2,m−2]；K∈{0,1,m−1,m} 单独报告、不得构成 FAIL（§11 G3a-5、§7.3）
+3. treated/heldout CPI evaluator 训练前冻结；训练 RNG 完全隔离；H/U/L 同 replicate 共享 sample/span/context；heldout edges 与 training treated edges 不重叠（§9、§14）
 **前身**：`protocol/mechanism_complementary_exposure_v2.md`（DRAFT，已废弃——pairing 每步 fresh random 会被边缘化回 uniform，identifiability 失效）
 **v1.2 结论依据**：`reports/mechanism_pilot_v1_2_report.md`（FROZEN，tag `mechanism-pilot-v1.2-frozen`）
 
@@ -59,11 +63,20 @@ v2.1 直接操纵该频率（而不是再间接操纵 fresh-random 程度）：
 ### U（uniform baseline）
 - 从 m 个位置均匀抽 size-K 子集（不使用 pair map 决定 mask，但同一 frozen map 仍生成/记录，供 treated-pair 测量与 CPI_treated）。
 
+### K 边界（even m，H/L/U 同规则）
+- `K=0`：b_max=0、a=0 → 空 mask 集（唯一可能）；`K=m`：b_max=0、a=m/2 → 全集（唯一可能）。三 policy 分布相同（单点分布）。
+- `K=1`：H 与 L 均为"1 个 discordant pair + orientation coin" ⇒ P(i masked)=1/m 且三者分布逐位相同；`K=m−1` 对称（等价 K=1 的可见集）。⇒ **degenerate K 集合 = {0, 1, m−1, m}**（H=U=L 分布完全相同），G3a 对此单独报告（§11）。
+
 ## 5. 单位置 marginal 不变性证明
 
 **Even m**：设 pair 标签上的均匀置换群 + 每 pair 独立 orientation flip 构成自同构群 G，作用于 m 个位置**传递**（任意 i 可到任意 j：pair 移过去 + 按需 flip）。H/L 采样过程对 G 不变（pair 选择均匀、orientation fair coin）⇒ 分布 G-不变 ⇒ 所有位置 marginal 相等；又 Σ_i P(i masked) = K（exact K）⇒ **P_H(i)=P_L(i)=K/m**。U 平凡 K/m。∎
 
-**Odd m（§6 bank）**：paired marginal α 与 singleton 概率 q 满足 (m−1)α + q = K；取 q = K/m（singleton 硬币流，U/H/L 共享）⇒ α = K/m ⇒ **全体位置 marginal 精确 K/m**。∎
+**Odd m（§6 bank）**：完整推导（按用户修订 #1 展开）：
+1. **每 item exact K**：singleton 硬币 s ∈ {0,1} 取值后，pairs 内需 K−s 个 mask；0 ≤ K−s ≤ m−1 恒可被 H/L 的 b/a 分解表示（§6 可行性）⇒ 总 mask 数 = s + (K−s) = K 恒成立。
+2. **轮换对称**：phase t 下 pair 内位置对称（pair 选择均匀 + orientation fair coin）⇒ 条件边际相等；且每位置在 m 个 phase 中恰 1 次 singleton、m−1 次 paired ⇒ 对位置求期望时全体位置地位相同 ⇒ 边际 P(i masked) 与 i 无关。
+3. **取值**：设 singleton 被 mask 概率 q（硬币流参数，U/H/L 共享），paired 位置边际 α。对任意位置 i：`P(i masked) = (m−1)/m · α + (1/m) · q`；同时期望总 mask = Σ_i P(i masked) = K ⇒ `(m−1)α + q = K`。
+4. **取 q = K/m**（`s ~ Bernoulli(K/m)`，U/H/L 共享流；U 消耗但不用）⇒ `α = (K − K/m)/(m−1) = K/m` ⇒ **全体位置 marginal 精确 K/m**。∎
+5. **K 边界**：K=0 ⇒ s≡0（Bernoulli(0)），空集唯一；K=m ⇒ s≡1（Bernoulli(1)），pairs 全 both-mask + singleton mask ⇒ 全集唯一。三 policy 单点分布相同（degenerate，§4/§7.3）。
 
 **L/R 趋势**：discordant pair 的 orientation 为 fair coin（H/L）⇒ 任意 treated pair 左端/右端 mask 率差 = 0；U 均匀 ⇒ 0。exact（小 case 枚举验证，§7）。
 
@@ -74,7 +87,7 @@ v2.1 直接操纵该频率（而不是再间接操纵 fresh-random 程度）：
 - **Bank 构造**：每 replicate × odd m，frozen random base permutation π_r；phase t = 0..m−1 的 matching：`singleton = π_r(t)`，pairs = `(π_r(t+1), π_r(t+2)), (π_r(t+3), π_r(t+4)), …, (π_r(t+m−2), π_r(t+m−1))`（下标 mod m）。n = (m−1)/2 对。
   - 性质：每个位置在 m 个 phase 中**恰好一次** singleton；bank 的 pair 并集 = π_r 的 cycle 边 `{(π_r(i), π_r(i+1)) mod m}`（m 条边，每条边恰在 2 个 phase active）。
 - **Phase schedule（U/H/L 完全共享，确定性）**：对 span 内第 s 个 item，`phase = (o_span + s) mod m`，`o_span` 为该 span 的 frozen offset（由 span 流确定，非 RNG、非每步 fresh）。长 span 下每 phase 频率 → 1/m ⇒ 每位置 singleton 长期频率相等 ✓。
-- **Singleton 硬币（共享流）**：每 item 消耗一次 `s ~ Bern(K/m)`（seed 8500+r，U/H/L 共享；U 不用于 mask 但流一致）。
+- **Singleton 硬币（共享流，修订 #1）**：每 item 消耗一次 **`s ~ Bernoulli(K/m)`**（显式：P(s=1)=K/m、P(s=0)=1−K/m；seed 8500+r，U/H/L 共享同一硬币流；U 消耗但不用该值）。边界：K=0 ⇒ s≡0；K=m ⇒ s≡1。marginal 推导见 §5。
 - **给定 (phase t, s) 的 pair 内 mask**（exact K 保持：pairs 内需 K−s 个 mask，0 ≤ K−s ≤ m−1 恒可行）：
   - H：`b = min(K−s, m−1−(K−s))`，`a = (K−s−b)/2`；选 b 个 discordant（fair coin orientation）+ a 个 both-mask。
   - L：`b = (K−s) mod 2`，`a = (K−s−b)/2`；同上。
@@ -141,9 +154,10 @@ H 是 pair-type pattern (b_max, a) 上的均匀分布，U 在该 pattern 类上�
 
 ### 7.3 全范围闭式 sweep（pilot 范围 m∈[10,50]）
 
-- even：567/609 个 (m,K) 严格 E_comp H>U>L 且 C̄ H<U<L；其余 42 个为 K=1 或 m−1 的**退化全相等**（非违反）。违反：**0**。
-- odd：540/580 严格；40 个退化（K=1 / m−1）。违反：**0**。
-- 退化 K 的处置：逐-K 严格性在 K∈{1,m−1} 不成立（该 K 下所有 policy 同分布），但 K 流由共享 q_t-Binomial 驱动，非退化 K 有正概率 ⇒ **pooled E_comp 排序严格**。gate 用 pooled 口径 + 分桶报告。
+- even：567/609 个 (m,K) 严格 E_comp H>U>L 且 C̄ H<U<L；其余 42 个为 K∈{1,m−1} 的**退化全相等**（非违反）。违反：**0**。
+- odd：540/580 严格；40 个退化（K∈{1,m−1}）。违反：**0**。
+- **degenerate K 集合 = {0, 1, m−1, m}**（修订 #2）：K=0/m 为单点分布（空/全集）；K=1/m−1 时 H/L 均为"1 个 discordant + coin"，与 U 分布逐位相同（exact 枚举验证，§7.1 补充）。这些 K 下三 policy 分布完全相同，strict 排序不适用。
+- 退化 K 的处置（gate 口径，修订 #2）：**strict E_comp H>U>L 仅对 non-degenerate K∈[2,m−2] 判**；K∈{0,1,m−1,m} 单独报告（计数/占比表），**不得构成 FAIL**。K 流由共享 q_t-Binomial 驱动，non-degenerate K 有正概率 ⇒ pooled 口径排序仍严格。
 
 ### 7.4 二阶诊断：treated-pair covariance（large-m 稳定指标）
 
@@ -168,8 +182,14 @@ H 是 pair-type pattern (b_max, a) 上的均匀分布，U 在该 pattern 类上�
 ## 9. CPI 定义（三口径）
 
 1. **CPI_global（primary，frozen 不动）**：现有 frozen evaluator 全口径 CPI_abs / CPI_RMS（manifest `1897bd14…`，500 样本，v4.2）。**任何修改禁止。**
-2. **CPI_treated（secondary，新 evaluator 模块，实现待审批后）**：只评估训练 pair map 的 treated pairs。per sample：取该 replicate 的 frozen map 在 span 内的相对位置对，逐对 delta-swap（复用 frozen corruption/eval 打分路径，3 forward/pair），per-sample = mean |δ| over treated pairs。H_r 与 L_r 同 replicate 共享同一 map ⇒ 可逐样本配对。step0 baseline 按各 replicate map 分别给出。
+2. **CPI_treated（secondary，新 evaluator 模块）**：只评估训练 pair map 的 treated pairs。per sample：取该 replicate 的 frozen map 在 span 内的相对位置对，逐对 delta-swap（复用 frozen corruption/eval 打分路径，3 forward/pair），per-sample = mean |δ| over treated pairs。H_r 与 L_r 同 replicate 共享同一 map ⇒ 可逐样本配对。step0 baseline 按各 replicate map 分别给出。
 3. **CPI_heldout（secondary）**：一套独立 frozen heldout map（fresh random permutation 的 **skip-2 边**；生成时强制与 rep1/rep2 训练 map 边集不相交；落盘+sha256，训练永不加载）。区分 local pair-specific vs generalized effect。
+
+**冻结与隔离要求（修订 #3，全部为硬性要求）**：
+- **训练前冻结**：treated/heldout CPI evaluator 的代码、heldout map 文件、pair 定义在**任何训练开始之前**完成并落盘 sha256；训练期间与训练后**禁止修改** evaluator（与 frozen evaluator 同等待遇）。
+- **训练 RNG 完全隔离**：training 的 policy RNG 流（§10 seeds）与 evaluator RNG 永不共享；treated/heldout evaluator 的 corruption 流沿用 frozen evaluator 的既有隔离实现（manifest 冻结 corruption realization，训练流 seed 域与 evaluator seed 域不相交），pair 选择为确定性 map（无 RNG）。
+- **H/U/L 同 replicate 共享 sample/span/context**：三 policy 同 replicate 使用逐位相同的 sample 流、span 结构（长度/起点）、σ、K 流与 corruption context（x_t 的初始揭示状态）；policy 只决定 mask subset 的选取（§4/§6）。共享性由 schedule digest 校验（§11 G3a-2）。
+- **heldout edges 与 training treated edges 不重叠**：heldout map 生成时对每个 span length m 逐边校验与 rep1/rep2 treated 边集的交集为空（确定性 rejection 循环，m≥10 时几乎一次通过）；不重叠关系落盘记录（JSON：每 m 的三方边集 + 交集断言结果）。
 
 **成本注**：treated/heldout 每 sample 需 m/2（even）或 m（odd）对 × 3 forward；span m≤50 ⇒ ≤150 forward/sample，500 样本 ⇒ ≤75k forward，pilot 规模可接受。
 
@@ -184,13 +204,13 @@ H 是 pair-type pattern (b_max, a) 上的均匀分布，U 在该 pattern 类上�
 ## 11. Gate（四层，DRAFT）
 
 **G3a — Intervention validity（全部必须 PASS，任一 FAIL ⇒ 禁止机制解释）**
-1. exact K per item（训练流断言）；
-2. U/H/L 同 replicate 共享 sample/span/σ/K 流（schedule digest sha256 一致）；
+1. exact K per item（训练流断言；含 odd-m singleton 硬币后的 K−s 分解可行性断言）；
+2. U/H/L 同 replicate 共享 sample/span/σ/K 流与 phase/singleton 硬币流（schedule digest sha256 一致）；
 3. 单位置 marginal parity（实测 per-position mask rate ≈ K/m，容差=采样噪声界）；
 4. 无 L/R 趋势（discordant pair 左/右 mask 计数差 ≈ 0）；
-5. E_comp：实测 overall H > U > L（且分桶与闭式一致）；
-6. mask distributions 可区分（§7 设计期 exact TV > 0 + 实测 C̄_treated 排序 H<U<L）；
-7. pairing/bank hash 正确（frozen map 文件 sha256 与加载校验一致）。
+5. E_comp：**strict H > U > L 仅对 non-degenerate K∈[2,m−2] 判**（修订 #2）；K∈{0,1,m−1,m} 单独报告（计数/占比表，三 policy 应全相等），**不得构成 FAIL**；pooled overall 口径 H > U > L 且分桶与闭式一致；
+6. mask distributions 可区分（§7 设计期 exact TV > 0 + 实测 C̄_treated 排序 H<U<L；K∈{0,1,m−1,m} 除外，单独报告）；
+7. pairing/bank hash 正确（frozen map 文件 sha256 与加载校验一致）；heldout 与 training treated edges 不重叠断言通过。
 
 **G3b — Local manipulation check**：CPI_treated_H < CPI_treated_L，两 training replicate 点估计同向；per-replicate paired bootstrap（10k, seed=0）+ 按 replicate 聚类 pooled CI（同 v1.2 口径）。PASS 仅允许"intervention locally affects treated pairs"表述。
 
@@ -221,11 +241,12 @@ v2.1 新增：≈15.7GB checkpoints + <0.1GB 其他 ≈ **16GB**；安全要求 
 
 ## 14. 执行顺序（审批后）
 
-1. 本协议用户复核 → FROZEN（sha256 落盘）
-2. frozen pair/bank map 生成 + sha256（rep1/rep2/heldout）
-3. G3a 设计期 preflight 复跑（§7 脚本 + 训练流 dry-run）
-4. 磁盘清理 + compact
-5. 6 run 训练 → 18 checkpoint 评估（global CPI/task）+ treated/heldout CPI
-6. G3a/b/c/d 分析 → 报告 → 冻结
+1. 本协议用户冻结确认（sha256 落盘，不再改动）
+2. frozen pair/bank map 生成 + sha256（rep1/rep2/heldout）+ heldout 不重叠断言落盘
+3. **treated/heldout CPI evaluator 实现并冻结（训练前，修订 #3）**：代码 + heldout map + pair 定义全部落盘 sha256；此后禁止修改
+4. G3a 设计期 preflight 复跑（§7 脚本 + 训练流 dry-run：digest / exact-K / phase 消耗核对）
+5. **磁盘清理（前置条件：D: free ≥ 26GB = 16GB 新增 + 10GB margin）**：候选退役资产经用户逐项确认后删除 → DiskPart compact → 复核 v1.2 资产完整性
+6. 6 run 训练（driver：manifest hash / frozen 文件 / map hash 守卫）→ 18 checkpoint 评估（global CPI/task）+ treated/heldout CPI
+7. G3a/b/c/d 分析 → 报告 → 冻结
 
-**当前禁止**：实现 mask policy 代码、生成大 checkpoint、启动任何训练。
+**当前禁止**：实现 mask policy 代码、实现 treated/heldout evaluator、生成大 checkpoint、启动任何训练——须用户按本表逐项放行。

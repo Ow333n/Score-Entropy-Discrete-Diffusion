@@ -135,6 +135,8 @@ def odd_bank_distributions(m, K, verbose=True):
         phase_pairs[t] = pairs
         for s_val in (0, 1):
             Kp = K - s_val  # pairs 内 mask 数
+            if Kp < 0 or Kp > m - 1:
+                continue  # K=0 ⇒ s=1 概率 0；K=m ⇒ s=0 概率 0
             for hp in ("H", "L"):
                 if hp == "H":
                     b = min(Kp, (m - 1) - Kp)
@@ -328,3 +330,21 @@ if __name__ == "__main__":
         total = sum(m - 1 for m in range(10, 51) if m % 2 == parity)
         print(f"{name} m∈[10,50]: E_comp 严格 H>U>L: {strict_e}/{total}；"
               f"C̄ 严格 H<U<L: {strict_c}/{total}；全相等(退化) K: {equal_e}；违反: {viol}")
+
+    # degenerate K = {0, 1, m-1, m}：三 policy 分布应完全相同（TV=0、E_comp/C̄ 相等）
+    print("\n=== degenerate K∈{0,1,m-1,m} 校验（H=U=L 同分布）===")
+    for m, pairs, fn in ((4, [(0, 1), (2, 3)], "even"),
+                          (6, [(0, 1), (2, 3), (4, 5)], "even"),
+                          (5, None, "odd")):
+        for K in (0, 1, m - 1, m):
+            if fn == "even":
+                dist_U, dist_H, dist_L = even_distributions(m, K, pairs)
+            else:
+                dist_U, dist_H, dist_L, _ = odd_bank_distributions(m, K, verbose=False)
+            t_hu = tv(dist_H, dist_U)
+            t_lu = tv(dist_L, dist_U)
+            t_hl = tv(dist_H, dist_L)
+            ok = (t_hu == 0 and t_lu == 0 and t_hl == 0)
+            print(f"m={m} K={K}: TV(H,U)={t_hu} TV(L,U)={t_lu} TV(H,L)={t_hl} "
+                  f"→ 同分布: {ok}")
+            assert ok
