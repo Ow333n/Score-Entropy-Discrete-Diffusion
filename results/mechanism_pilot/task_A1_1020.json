@@ -1,0 +1,17 @@
+{
+  "tag": "mechpilot-A1-1020",
+  "model_path": "exp_local/regime_a/mechpilot-A1-133557",
+  "source": "local-ema (exp_local/regime_a/mechpilot-A1-133557)",
+  "step": 1020,
+  "protocol_version": "v4.2",
+  "manifest_file": "manifests/regime_a_eval_v1.jsonl",
+  "manifest_sha256": "1897bd14bf92e61b2664a4950a3b60f14e09ac0d454d58d22e88815207f263d3",
+  "git_commit": "09787d8d8a3fa46b97359625a12967c4166890e0",
+  "masked_nll": 3.96875,
+  "masked_nll_sem": 0.07826237921249264,
+  "token_acc": 0.3477748930454254,
+  "token_acc_sem": 0.010100363746894962,
+  "greedy_per_pos_hit_rate": 0.4585275895585695,
+  "greedy_span_exact_match": 0.03,
+  "n_greedy": 100
+}
