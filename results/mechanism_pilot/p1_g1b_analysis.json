@@ -1,0 +1,63 @@
+{
+  "replicates": {
+    "1": {
+      "matched_pairs": [
+        {
+          "ref_step": 500,
+          "matched": true,
+          "b_step": 500,
+          "dnll": 0.0,
+          "dacc": -0.0006699562072753906,
+          "d_cpi": 0.01953125,
+          "ci_lo": 0.0028555736541748047,
+          "ci_hi": 0.035734603881835934
+        },
+        {
+          "ref_step": 1020,
+          "matched": true,
+          "b_step": 1020,
+          "dnll": 0.015625,
+          "dacc": -0.0044432878494262695,
+          "d_cpi": 0.0,
+          "ci_lo": -0.023378916168212888,
+          "ci_hi": 0.025269055938720697
+        },
+        {
+          "ref_step": 2500,
+          "matched": false
+        }
+      ],
+      "G1b_rep_verdict_2500": "INCONCLUSIVE"
+    },
+    "2": {
+      "matched_pairs": [
+        {
+          "ref_step": 500,
+          "matched": true,
+          "b_step": 500,
+          "dnll": 0.0,
+          "dacc": -0.001008838415145874,
+          "d_cpi": 0.01171875,
+          "ci_lo": -0.001340040588378906,
+          "ci_hi": 0.026868553924560543
+        },
+        {
+          "ref_step": 1020,
+          "matched": true,
+          "b_step": 1020,
+          "dnll": 0.0,
+          "dacc": 0.0045667290687561035,
+          "d_cpi": 0.0,
+          "ci_lo": -0.023732582759857176,
+          "ci_hi": 0.024967483520507806
+        },
+        {
+          "ref_step": 2500,
+          "matched": false
+        }
+      ],
+      "G1b_rep_verdict_2500": "INCONCLUSIVE"
+    }
+  },
+  "G1b_overall": "INCONCLUSIVE"
+}
