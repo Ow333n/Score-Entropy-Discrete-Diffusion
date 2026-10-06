@@ -125,7 +125,8 @@ def main():
     os.makedirs(shared_dir, exist_ok=True)
     step0_path = os.path.join(shared_dir, "checkpoint_0000.pth")
     if not os.path.exists(step0_path):
-        torch.save(dict(model=score_model.state_dict(), ema=ema.state_dict()), step0_path)
+        torch.save(dict(model=score_model.state_dict(), ema=ema.state_dict(),
+                        step=0), step0_path)
         log(f"step0 共享 artifact 已创建: {step0_path}")
 
     micro_batch = cfg.training.batch_size // (cfg.ngpus * cfg.training.accum)
@@ -188,11 +189,11 @@ def main():
 
             if step in SAVE_STEPS:
                 ema_path = os.path.join(work_dir, f"checkpoint_{step}.pth")
-                torch.save(dict(ema=ema.state_dict()), ema_path)
+                torch.save(dict(ema=ema.state_dict(), step=step), ema_path)
                 log(f"EMA-only checkpoint: {ema_path}")
             if step == cfg.training.n_iters:
                 raw_path = os.path.join(work_dir, "checkpoint_2500_raw.pth")
-                torch.save(dict(model=score_model.state_dict()), raw_path)
+                torch.save(dict(model=score_model.state_dict(), step=step), raw_path)
                 log(f"raw weights: {raw_path}")
 
     # 结束守卫：shared schedule（四元组 σ/dσ/span/K）SHA-256 与 preflight 参考一致

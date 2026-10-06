@@ -35,6 +35,13 @@ declare -A TRAIN=( [A1]="mechanism.policy=A mechanism.replicate=1" \
                    [A2]="mechanism.policy=A mechanism.replicate=2" \
                    [B2]="mechanism.policy=B mechanism.replicate=2" )
 for run in A1 B1 A2 B2; do
+  meta=$(ls -1t exp_local/regime_a/mechpilot-${run}-*/run_metadata.json 2>/dev/null | head -1)
+  if [ -n "$meta" ]; then
+    log=${meta%/*}/train.log
+    grep -q "完成: 2500 optimizer steps" "$log" \
+      && grep -q "与 preflight 一致" "$log" \
+      && { echo "SKIP 训练 $run（已完成且 hash 一致）"; continue; }
+  fi
   echo "=== 训练 $run: ${TRAIN[$run]} ==="
   $PY training/pilot_mechanism.py ${TRAIN[$run]} training.n_iters=2500 training.name=mechpilot-$run
   log=$(ls -1t exp_local/regime_a/mechpilot-${run}-*/train.log | head -1)
