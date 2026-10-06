@@ -338,3 +338,19 @@
 - [x] **面试汇报中文化完成**（commit 9a31aef）：findings/lessons、8 页大纲、30s/2min/5min 讲稿、Q&A、中文 Research Story SVG、Demo 主文案中文（Noto Sans SC 字体内置）
 - [x] **技术表述修正 + Q&A 扩展至 41 题**（commit 3cbb7bc，用户逐条审查后）：SFT 正式步数 10200 全局清除；score=概率比定义；raw/staggered 改跨时间步修正表述；kernel 改 Bayes 逻辑（合理性×可达性）；parallel prediction + iterative revealing；K-ablation 全部降级（"没有证据表明是主要瓶颈"）；创新点→研究贡献（指标非原创，引用 curl/swap consistency）；30s pitch 压缩版；5min 讲稿 6 模块化；新增题含 128vs1024 gate 实测数值（0.2035 vs 0.2192、35.8s vs 279.4s）
 - [x] 收尾状态：无运行中进程/tmux，GPU 空闲（~1.8GB WDDM 开销），working tree clean，HEAD 3cbb7bc；下一步候选（等用户定）：RL-3 per-position PPO objective / 第二 seed / cross-task 验证
+
+## 2026-10-06 mechanism pilot v1.2 关闭 + v2.1 设计期（DRAFT）
+
+- [x] **v1.2 关闭**（commit 9cc93c5 已 push origin/main + tag `mechanism-pilot-v1.2-frozen`；报告 `reports/mechanism_pilot_v1_2_report.md` FROZEN）：
+  - G1（Fresh vs Fixed Random）= INCONCLUSIVE（G1a 2500：rep1 −0.0059 CI[−0.0382,+0.0235] / rep2 +0.0078 CI[−0.0211,+0.0373]；G1b step2500 无 NLL±0.02 overlap → INC 非 FAIL）
+  - G2（L2R vs R2L directional）= INCONCLUSIVE（2500 聚类 CI[−0.0324,+0.0617] 含 0；rep1 同符号 rep2 相反；1020 出现聚类 CI 排除 0 但同符号 → 该点 FAIL，定义为 early transient 不升格）
+  - 措辞纪律：不能说 fresh random 有效/无效、不能说 directional exposure 被证明不影响 order、step500/1020 transient 禁止升格
+  - 保留事实：pretrained CPI≈0.3281，A/B/C/D 八个 partial-reveal SFT run 全部衰减（0.2637–0.2910），但 A/B fresh-resampling 差异与 C/D directional bias 均无法解释
+- [x] **研究问题收窄**：Does complementary partial-conditioning exposure itself drive the reduction of reveal-order incompatibility during SFT? 不优先扩 seeds 重跑 G1/G2
+- [x] **v2.1 DRAFT**（commit 2a13702，非冻结）：`protocol/mechanism_complementary_exposure_v2_1.md` + `scripts/v21_design_validation.py`
+  - U/H/L：直接操纵 E_comp=P(exactly one of pair masked)，persistent/frozen pair map（旧 v2 每步 fresh pairing 边缘化回 uniform 的 identifiability bug 已修）
+  - even m：frozen perfect matching；H b=min(K,m−K) discordant、L b=K mod 2、U uniform；单位置 marginal=K/m 有对称性证明；odd m：balanced bank（旋转 matching、singleton 轮换、共享 phase 流 + Bern(K/m) singleton 硬币）
+  - 设计期验证全 PASS：m=4/6/5 exact 枚举 TV>0；m∈[10,50] 全 (m,K) 闭式 sweep E_comp H>U>L 与 C̄ H<U<L 严格（仅 K=1/m−1 退化全相等，0 违反）；MC marginal 偏差 0.0027；even 大 m TV 闭式
+  - 四层 gate：G3a intervention validity（全 PASS 才能机制解释）/ G3b local treated / G3c global primary / G3d matched performance（no overlap=INC）；Case A–E 冻结
+  - 磁盘：D: free 18GB < 26GB 需求（16GB 新增 + 10GB margin）→ 训练前须受控清理+compact，禁碰 v1.2 资产
+- [ ] **当前禁止**：v2.1 实现 / 训练 / 大 checkpoint；下一步 = 用户复核 protocol DRAFT → FROZEN → map 生成 → G3a preflight → 磁盘 → 6 runs
