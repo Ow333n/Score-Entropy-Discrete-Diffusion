@@ -1,0 +1,233 @@
+{
+  "protocol": "mechanism_complementary_exposure_v2_1",
+  "preflight": "2026-10-06",
+  "n_steps": 2500,
+  "micro_batch": 32,
+  "n_items": 80000,
+  "N_train_chunks": 445557,
+  "seq_len": 256,
+  "span_min": 10,
+  "span_max": 50,
+  "replicates": {
+    "1": {
+      "shared_v21_digest": "5da669c2045d9eb51ba3c8d27d16b6fa97b1e2f1f6f62ff13ff3126f460505c1",
+      "v21_digests_equal": true,
+      "five_tuple_digests_equal": true,
+      "quadruple_digest_matches_v12": true,
+      "e_comp_measured": {
+        "U": 0.332531102,
+        "H": 0.479965243,
+        "L": 0.039653307
+      },
+      "e_comp_closed": {
+        "U": 0.333476933,
+        "H": 0.479974103,
+        "L": 0.039880704
+      },
+      "e_comp_measured_equals_closed": true,
+      "cbar_treated": {
+        "U": -0.006268531,
+        "H": -0.055464116,
+        "L": 0.091330105
+      },
+      "cbar_active": {
+        "U": -0.006798624,
+        "H": -0.082146385,
+        "L": 0.143200061
+      },
+      "e_comp_ordering_ok": true,
+      "cbar_ordering_ok": true,
+      "cbar_active_ordering_ok": true,
+      "prefixes": {
+        "100": {
+          "shared_digest": "031b537b44c4ca02aef4233adda521c7dc68af0ff0c2ad3c1b46857c3318a350",
+          "e_comp": {
+            "U": 0.332230456,
+            "H": 0.477501704,
+            "L": 0.039437814
+          },
+          "cbar_treated": {
+            "U": -0.00786117,
+            "H": -0.0558816,
+            "L": 0.089868291
+          }
+        },
+        "500": {
+          "shared_digest": "cf023d1742f0ddf2de939ad1881cda016fdeabb8ca00346ca4d9e32c9e7967da",
+          "e_comp": {
+            "U": 0.332205577,
+            "H": 0.480472808,
+            "L": 0.039921711
+          },
+          "cbar_treated": {
+            "U": -0.00643434,
+            "H": -0.056031091,
+            "L": 0.090437685
+          }
+        },
+        "1000": {
+          "shared_digest": "a61f4ab555d72471db4de1c7b63bd164c395b9875aa41c6356d27e0b99c8c7a0",
+          "e_comp": {
+            "U": 0.333140335,
+            "H": 0.481195392,
+            "L": 0.039804744
+          },
+          "cbar_treated": {
+            "U": -0.006589466,
+            "H": -0.056189518,
+            "L": 0.091247497
+          }
+        },
+        "1500": {
+          "shared_digest": "884195e38f9b7d8b96e80fc20275a98254b7637880c3cf7692e7f886578136bc",
+          "e_comp": {
+            "U": 0.332537865,
+            "H": 0.480106298,
+            "L": 0.039658673
+          },
+          "cbar_treated": {
+            "U": -0.006702614,
+            "H": -0.056022291,
+            "L": 0.090999139
+          }
+        },
+        "2000": {
+          "shared_digest": "59a0fe6a6991243c18725c503570b078f1cc48b550a081b3de0d23334a982c3b",
+          "e_comp": {
+            "U": 0.332694902,
+            "H": 0.480523004,
+            "L": 0.039653396
+          },
+          "cbar_treated": {
+            "U": -0.006572859,
+            "H": -0.055953944,
+            "L": 0.091128214
+          }
+        },
+        "2500": {
+          "shared_digest": "5da669c2045d9eb51ba3c8d27d16b6fa97b1e2f1f6f62ff13ff3126f460505c1",
+          "e_comp": {
+            "U": 0.332531102,
+            "H": 0.479965243,
+            "L": 0.039653307
+          },
+          "cbar_treated": {
+            "U": -0.006268531,
+            "H": -0.055464116,
+            "L": 0.091330105
+          }
+        }
+      }
+    },
+    "2": {
+      "shared_v21_digest": "3ee9c9dfc1dfdc38d97ee433a2338784b3605b352b31e5f919e672909fc80307",
+      "v21_digests_equal": true,
+      "five_tuple_digests_equal": true,
+      "quadruple_digest_matches_v12": true,
+      "e_comp_measured": {
+        "U": 0.335354244,
+        "H": 0.483414522,
+        "L": 0.039611107
+      },
+      "e_comp_closed": {
+        "U": 0.335168004,
+        "H": 0.483300561,
+        "L": 0.039682023
+      },
+      "e_comp_measured_equals_closed": true,
+      "cbar_treated": {
+        "U": -0.006156001,
+        "H": -0.055553238,
+        "L": 0.092240067
+      },
+      "cbar_active": {
+        "U": -0.006484685,
+        "H": -0.082247516,
+        "L": 0.144980764
+      },
+      "e_comp_ordering_ok": true,
+      "cbar_ordering_ok": true,
+      "cbar_active_ordering_ok": true,
+      "prefixes": {
+        "100": {
+          "shared_digest": "95baeb33298dafb34122dbfa749411cbab79e0b91a13e67ab679a6fe43bcb01e",
+          "e_comp": {
+            "U": 0.331430702,
+            "H": 0.477448243,
+            "L": 0.038549117
+          },
+          "cbar_treated": {
+            "U": -0.006505699,
+            "H": -0.055694404,
+            "L": 0.091687166
+          }
+        },
+        "500": {
+          "shared_digest": "e02dce278d8cd649c67b8cf66c3e461cc81d563afb72892f0c34fd4ef08bb1d1",
+          "e_comp": {
+            "U": 0.337242929,
+            "H": 0.487291462,
+            "L": 0.039598035
+          },
+          "cbar_treated": {
+            "U": -0.006501671,
+            "H": -0.056405176,
+            "L": 0.092565022
+          }
+        },
+        "1000": {
+          "shared_digest": "fed0f21ca35cea12eb827548214c1056b61ff964c6f534d13ee4e24a084b4bd2",
+          "e_comp": {
+            "U": 0.33501475,
+            "H": 0.483728921,
+            "L": 0.039695476
+          },
+          "cbar_treated": {
+            "U": -0.006529665,
+            "H": -0.055934779,
+            "L": 0.091685185
+          }
+        },
+        "1500": {
+          "shared_digest": "8f3fddd62a016cac9d3db690a2532f3a611e941929b9d50f6281906df2487855",
+          "e_comp": {
+            "U": 0.335912906,
+            "H": 0.484568286,
+            "L": 0.03946039
+          },
+          "cbar_treated": {
+            "U": -0.007061871,
+            "H": -0.056588852,
+            "L": 0.091708355
+          }
+        },
+        "2000": {
+          "shared_digest": "af217780da52418bdb2ef928d7b877f3f0778a70b5e076e9a5559eaf613f3dbb",
+          "e_comp": {
+            "U": 0.334866628,
+            "H": 0.482948311,
+            "L": 0.039577812
+          },
+          "cbar_treated": {
+            "U": -0.006302236,
+            "H": -0.055747283,
+            "L": 0.091949143
+          }
+        },
+        "2500": {
+          "shared_digest": "3ee9c9dfc1dfdc38d97ee433a2338784b3605b352b31e5f919e672909fc80307",
+          "e_comp": {
+            "U": 0.335354244,
+            "H": 0.483414522,
+            "L": 0.039611107
+          },
+          "cbar_treated": {
+            "U": -0.006156001,
+            "H": -0.055553238,
+            "L": 0.092240067
+          }
+        }
+      }
+    }
+  }
+}

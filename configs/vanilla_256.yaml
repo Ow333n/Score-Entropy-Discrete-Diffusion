@@ -87,3 +87,12 @@ hydra:
 mechanism:
   policy: A            # A | B | C | D（§3）
   replicate: 1         # 1 | 2（§4 CRN 配对）
+
+# --- v2.1 mechanism pilot（protocol mechanism_complementary_exposure_v2_1，2026-10-06）---
+# 仅 training/pilot_v21.py / scripts/v21_dryrun.py 使用；其他入口忽略。
+# recipe 与 v1.2 实际执行一致（lr=config.optim.lr=3e-4、warmup 2500、batch 32、2500 步）
+mechanism_v21:
+  policy: U            # U | H | L（§4/§6）
+  replicate: 1         # 1 | 2
+  maps_dir: exp_local/regime_a/mechpilot_v21_maps
+  save_steps: [500, 1020, 2500]   # formal §10；smoke override [50, 100]

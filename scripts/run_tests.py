@@ -14,6 +14,7 @@ TEST_MODULES = [
     "compatibility.tests.test_swap_delta",
     "compatibility.tests.test_strict_reveal",
     "compatibility.tests.test_swap_gradient",
+    "compatibility.tests.test_v21_policy",
 ]
 
 
