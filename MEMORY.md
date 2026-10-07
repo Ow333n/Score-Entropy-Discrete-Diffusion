@@ -442,3 +442,11 @@
   - **VERDICT = P1-B**（FP32 primary 口径）+ 早期窗口 temporal signal 披露 → Option B 重训成为活选项（待用户裁定）
 - [x] 坑：.gitignore 裸 `core` 模式误伤 results/phase1_diag/core/ → force-add 入库
 - [ ] 等用户 review 后裁定：Phase 2 decoding decomposition / Option B 确定性重训 / 其他
+
+### Phase 2 preflight 完成（2026-10-07，commit 7ca921c 已 push；bulk 未启动）
+
+- [x] P1-B 冻结口径按用户 nuance 修正：只表述"late-stage CE improvement 不与 CPI attenuation 稳定共变"；不写"完全无关/机制被排除"；早期窗口 unresolved（p1-dense 仅 secondary）；Option B 保留不执行
+- [x] 实现：compatibility/dependence.py（JS_dep primary + D_ab/PMI secondary + δ；8/8 toy）、evaluation/phase2_block_decoder.py（block 1/2/4/8、三种选择、greedy 主、NFE 三栏）、evaluation/eval_diag_fp32_pairs.py（per-sample 全 predictor）、scripts/phase2_grouped_cv.py（grouped 5-fold + 泄漏双向断言 + numpy OLS/logistic）
+- [x] 46/46 单测；smoke 全过（recovery 0.26–0.28 揭示口径、NFE-ok、确定性、JS_dep 0.0416、VRAM 3.94GB）
+- [x] 坑：multinomial 需 CUDA generator（torch.Generator(device=state.device)）；endpoint 口径=揭示位置命中（whole-span 次口径，避免可见 token 平凡命中）
+- [ ] 等用户 review → 才允许 Phase 2 bulk（decoding stress test：55 checkpoint × 4 block × 3 选择 × 500 样本 + pairs 评估 + grouped CV 分解）
