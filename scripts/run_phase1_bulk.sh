@@ -9,6 +9,11 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
+# allocator 工程配置（RL 阶段同款分类：memory/allocator engineering config，
+# 非算法改动）——减少 create_allocation 调用次数，缓解 WDDM 侧分配记账异常
+# （2026-10-07 bulk 首跑 dxg EOVERFLOW 后启用）
+export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+
 PY=.venv/bin/python
 
 # --- 守卫 ---
