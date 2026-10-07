@@ -411,3 +411,11 @@
 - [x] **JS dependence proxy 定案**（Phase 2 primary）：严格映射 score→clean-vocab softmax（frozen clean_log_probs 同源）；JS_dep=0.5[JSD(P_j^a‖Q_j)+JSD(P_i^b‖Q_i)]；性质：对称/∈[0,ln2]/JS=0⇒δ=0 但 δ=0⇏JS=0（严格更强）/非 δ 函数/fp64 log 域稳定/零额外 forward；toy 校验过（恒等零/近似不相交≈ln2/对称/极端分布稳定）；**D_ab 降级 secondary GT-conditioned**；禁称 TC
 - [x] NFE 严格定义：NFE_total=NFE_predict+NFE_select 两栏分列、选择 forward 逐次计入、greedy 主口径 NFE=轮数断言；primary endpoints 固定两个（token recovery accuracy + exact-span recovery）；三种报告（fixed-NFE/fixed-quality/frontier）；嵌套模型 Base=CE+Dep、Extended=+CPI、5-fold CV、entropy/confidence/distance 单加 baseline ≤6 predictors；Phase 3 继续 DEFER
 - [ ] 等用户 review v0.2 → FROZEN → precision-ladder preflight（~10min）→ 停下 review 定 B/C → FP32 evaluator 实现+冒烟 → 再停下
+
+### Phase 1 FP32 evaluator 完成（2026-10-07，commit 7e1167c 已 push）
+
+- [x] precision-ladder 裁决：Level B FAIL（step0 |ΔCPI_B−C|=0.00328>0.003，按预注册规则禁止放宽）→ **Level C = true-FP32 mirrored scoring forward** 为 Phase 1 bulk diagnostic precision mode
+- [x] evaluation/eval_diag_fp32.py（DIAG_PROTOCOL_VERSION=v1、precision_mode=true_fp32_mirrored_forward）：镜像 frozen forward 调用序列（同 frozen 子模块、仅去 blocks/output 的 bf16 autocast）；fp32 提取 + fp64 聚合；权重零修改；provenance 全记录；输出含 |δ| P50/75/90/95 + signed δ quantiles + NLL lattice stats + per-sample fp64
+- [x] 6/6 GPU 单测 PASS（scripts/test_diag_fp32.py）：mirror fidelity（bf16 块下与 frozen 逐位一致）/ deterministic rerun / no-bf16-lattice（off-grid 100%）/ chunk 1-2-4-8 不变 / RNG 隔离 / batch-order 不变（diff=0）
+- [x] smoke PASS：H1@2500 × 32-sample ladder subset 与 ladder-C 参考**逐位一致**（CPI 0.2139 / RMS 0.3766 / δ̄ +0.0986 / CE 4.3281）；VRAM 3.60GB / 1.1s
+- [ ] 等用户 review → 下一步才允许 bridge bulk（11 checkpoint 冻结清单 + 新旧双 evaluator，~2–3h 用户 tmux）
