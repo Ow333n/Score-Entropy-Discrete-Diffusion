@@ -211,9 +211,9 @@ def main():
 
     print("=" * 78)
     print("Option B dense trajectory 分析")
-    for wname in WINDOWS:
-        w = window_means[str(wname)]
-        print(f"  window {wname}: " + ", ".join(
+    for (lo, hi) in WINDOWS:
+        w = window_means[f"{lo}–{hi}"]
+        print(f"  window {lo}–{hi}: " + ", ".join(
             f"{k}: s1={w[k].get('s1') and round(w[k]['s1'],4)}/s2={w[k].get('s2') and round(w[k]['s2'],4)}"
             for k in metrics))
     print(f"  两 seed 方向一致（250–750）: "
