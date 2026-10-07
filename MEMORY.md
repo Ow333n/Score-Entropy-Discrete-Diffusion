@@ -393,3 +393,12 @@
   - 关键观察：U 与 v1.2-A 统计同分布（A1 0.2734/A2 0.2715/U1 0.2715/U2 0.3086）→ 四 run 全距 0.037，run 间 SD≈0.02 量级与 H−L 假设效应同阶——pilot 功效不足的直接证据（报告用）
   - 附带：treated/heldout/global 三口径一致均匀衰减（step0→2500 各 ~0.04–0.05）；§9.5 OG subset 12.35→H 11.92/U 11.21/L 11.15（64 样本 SE≈1.1，无排序）；path-score Var 33.3→27.9–33.0；confound 七项跨 policy 仅 intended 差异（transition H 略高）；δ_SD/localCE ≈0.042–0.045；D: free 27GB
 - [ ] 等用户复核报告后再定：正式报告文件 / push / confirmatory 决策
+
+### 研究路线正式转向：Phase 1 Compatibility–Estimation Dynamics（2026-10-07）
+
+- [x] **v2.1 正式关闭**：frozen 报告 reports/mechanism_pilot_v2_1_report.md（sha256 dd3cdb26…）+ 76 评估 JSON 入库 + push（HEAD=391d229，origin 同步）。结论 Case C；保留事实："All H/U/L variants still exhibit CPI attenuation relative to pretrained"；措辞纪律 §1.1
+- [x] **bf16 量化根因定案**：`model/transformer.py:282`（frozen 基线实现）在 forward 内部 autocast(bf16) → 旧 evaluator 全链 bf16（实测网格：NLL 2⁻⁵/2⁻⁶、δ 2⁻⁶/2⁻⁷、CPI_abs 2⁻⁹）；get_score_fn 的外层 autocast 在 def 时即退出（无关）。预存在性质（v4.1 基线起），非 v2.1 回归；G3d ±0.02 容差低于分辨率 → "匹配"=同桶
+- [x] **资产审计定案**：dense p1 中间权重（50–1020）已退役删除（只剩 2500+meta）；权重可用：pretrained step0 / formal s1/s2×{1020,5100,10200} / v1.2 8 runs×3 / v2.1 6 runs×3 / RL snapshots；dense 轨迹只剩 p1_dense 84 旧 JSON。方差分解：14-run pooled SD=0.0113、sample-level SE 0.020–0.024、pretrained→SFT 衰减 0.0495≈4.4×SD；SESOI=0.02；2-seed 可检效应≳0.035 → 功效不足
+- [x] **Phase 1 DRAFT**（protocol/phase1_compatibility_estimation_dynamics_DRAFT.md）：FP32 diagnostic evaluator 规格（score.float() 后 fp32 提取+fp64 聚合，model forward bf16 限制如实记录，review gate：批量运行前停）；bridge 11 checkpoint；P1-1/2/3；δ 分布报告（左移 vs 尾部，quantiles+outlier fraction）；finite-path OrderGap 命名；lead-lag（选项 A=旧 JSON exploratory / 选项 B=Gate-2 确定性重训恢复 dense 2×18min+33GB 待裁定；禁称 Granger）；FDR/SESOI/stopping 三结局
+- [x] **Phase 2 DRAFT**（protocol/phase2_parallel_decoding_decomposition_DRAFT.md）：**D_ab 定义检查定案**——δ=PMI_a→b−PMI_b→a（差）、D_ab=0.5(两者和)（均值），实证 corr(δ,D_ab)=0.018 近正交、D_ab mean +0.20 sharpening 偏移 → primary dependence proxy 改 KL 分布口径（零额外 forward），D_ab 留 secondary，禁称 TC；block decoding 冻结规格（1/2/4/8、三种位置选择、greedy 主、NFE=轮数）；NFE 三比较+frontier；primary=GT recovery accuracy；嵌套模型+5-fold CV；循环解释禁令；Phase 3 matching axes 只记录
+- [ ] **当前状态**：等用户 review 两个 DRAFT → FROZEN → FP32 evaluator 实现+冒烟 → 再停下 review。禁止：新训练/新 mask policy/Phase 3/大规模 decoding
