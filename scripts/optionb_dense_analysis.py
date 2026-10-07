@@ -98,7 +98,7 @@ def main():
             a_sym=dict(mean=(np.abs(d) / (np.abs(pmi_f) + np.abs(pmi_r) + 1e-9)).mean()),
         )
 
-    traj = {"s1": {"step0": step0}, "s2": {"step0": step0}}
+    traj = {"s1": {"0": step0}, "s2": {"0": step0}}
     for seed in (1, 2):
         for st in STEPS:
             traj[f"s{seed}"][str(st)] = per_checkpoint(f"s{seed}-{st}")
@@ -125,7 +125,7 @@ def main():
         window_means[wname] = {k: {s: v[0] for s, v in d.items()} for k, d in wm.items()}
         window_slopes[wname] = {k: {s: v[0] for s, v in d.items()} for k, d in ws.items()}
         consistency[wname] = {
-            k: {s: np.sign(v[0]) if v[0] is not None else 0
+            k: {s: np.sign(v) if v is not None else 0
                 for s, v in d.items()}
             for k, d in window_means[wname].items()}
 
