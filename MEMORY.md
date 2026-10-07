@@ -450,3 +450,12 @@
 - [x] 46/46 单测；smoke 全过（recovery 0.26–0.28 揭示口径、NFE-ok、确定性、JS_dep 0.0416、VRAM 3.94GB）
 - [x] 坑：multinomial 需 CUDA generator（torch.Generator(device=state.device)）；endpoint 口径=揭示位置命中（whole-span 次口径，避免可见 token 平凡命中）
 - [ ] 等用户 review → 才允许 Phase 2 bulk（decoding stress test：55 checkpoint × 4 block × 3 选择 × 500 样本 + pairs 评估 + grouped CV 分解）
+
+### Phase 2A 完成：Case C（2026-10-07，commit fb79783 已 push）
+
+- [x] 55/55 pairs diagnostics（per-sample δ/|δ|/D_ab/PMI 分解/JS_dep/CE，FP32；~25s/checkpoint）
+- [x] 核心发现：**CE 与 |δ| 反相**——500→1020 CE 改善（−0.033，100% runs 同向）但 |δ| 不动（+0.0098，仅 7% runs 下降）；1020→2500 CE 恶化（+0.092，0% 改善）但 |δ| 下降（−0.0089，71% 同向）→ Case A（estimation-quality）轨迹级反证
+- [x] checkpoint 级横截面：corr(|δ|,CE)=−0.332、corr(|δ|,JS_dep)=+0.466、控制 CE 后 JS 偏相关 +0.322——衰减强的 checkpoint 分布级 dependence 也低；D_ab 全平 ≈+0.2（GT-token sharpening 恒定）
+- [x] grouped CV（secondary）：M0(CE) MSE 0.2142 → M1(CE+JS) 0.1368（−36%）→ M3 0.1416；JS_dep 有 held-out 预测力、D_ab 增益小；CV 增益≠因果（用户纪律）
+- [x] **Case C**：无结构信号；决定性 250–1020 窗口在幸存 checkpoint（500/1020/2500）分辨率下不可分辨（dense 中间权重已删；旧 JSON 无 JS/D_ab）；Case B 签名部分出现在错误窗口（1020→2500 的 |δ|↓ + D_ab/JS 平）
+- [ ] 停止，等用户裁定：targeted Phase 2B（selected checkpoints × 64 子集 × confidence-first）/ mechanism-screening stop / empirical framing
