@@ -1,11 +1,8 @@
-# Phase 1 — Compatibility–Estimation Dynamics：Protocol DRAFT v0.1
+# Phase 1 — Compatibility–Estimation Dynamics：Protocol DRAFT v0.2
 
-**状态：DRAFT（待用户 review；不执行、不冻结）**
-**前序**：v1.2（G1/G2 INC）、v2.1（G3a PASS、G3b-d INC、Case C）已关闭；frozen 报告
-`reports/mechanism_pilot_v2_1_report.md`（sha256 `dd3cdb26…`）
-**路线**：停止第四种 mask policy；转向"为何普通 SFT 普遍降低 reveal-order incompatibility"
-**原则**：observation / mechanism-diagnostic study——即使 CPI 与 CE 强相关，也不能直接声称
-"CE improvement causes CPI reduction"。
+**状态：DRAFT v0.2（v0.1 + 用户修订 1–6；待 review；不执行、不冻结）**
+**前序**：v1.2 / v2.1 已关闭（v2.1 frozen 报告 sha256 `dd3cdb26…`，Case C）
+**原则**：observation / mechanism-diagnostic study；CPI 与 CE 强相关也不能声称因果。
 
 ---
 
@@ -13,196 +10,164 @@
 
 > SFT 过程中 conditional estimation improvement 是否与 CPI attenuation 稳定对齐？
 
-子问题：
-1. FP32 conditional CE/NLL 是否随 SFT 稳定下降？
-2. FP32 CPI_abs 是否随 SFT 稳定下降？
-3. within-run 的 ΔCE 与 ΔCPI 是否在多个 run/policy 中呈一致关联？
-4. （temporal）CE improvement 是否系统性早于 CPI attenuation？
+- P1-1：FP32 conditional CE/NLL 是否随 SFT 稳定下降？
+- P1-2：FP32 CPI_abs 是否随 SFT 稳定下降？
+- P1-3：within-run ΔCE 与 ΔCPI 是否在多个 run/policy 中一致关联？
+- P1-4（temporal）：CE improvement 是否系统性早于 CPI attenuation？（lead-lag，§8）
 
 ---
 
-## 2. 资产审计（Phase 1.0，已执行，2026-10-07）
+## 2. 资产审计结论（Phase 1.0，2026-10-07 已执行）
 
-### 2.1 权重资产（可重跑新 evaluator）
+权重可用：pretrained step0；formal v4.1 s1/s2 × {1020,5100,10200}（lr=3e-5）；
+v1.2 A/B/C/D ×2 × {500,1020,2500}；v2.1 U/H/L ×2 × {500,1020,2500}（均 lr=3e-4）；
+RL snapshots。**p1 dense 中间权重已退役**（只剩 2500+meta；84 个旧 JSON 为 dense 轨迹唯一来源）。
 
-| 资产 | checkpoints | 容器 | 备注 |
+方差分解：sample-level SE 0.020–0.024（N=500）；within-run SD ~0.008；between-seed
+spread 0.002–0.037；14-run pooled SD = **0.0113**；pretrained→SFT 衰减 0.0495 ≈ 4.4×SD。
+
+---
+
+## 3. Phase 1.1 — Precision-ladder preflight（修订 #1，FP32 evaluator 的前置门）
+
+**动机**：事后 `.float()` 不能恢复 bf16 forward 已舍入的 score 精度。必须先量化
+"真正改善发生在哪一层"，再定正式 evaluator 的规格。
+
+**已探针确认的结构事实（2026-10-07）**：
+- frozen forward 是**混合精度**：`vocab_embed / sigma_map / rotary` 在 bf16 autocast **外**
+  （fp32）；`blocks 循环 + output_layer` 在 `transformer.py:282` 的 bf16 autocast **内**；
+  后续 scale_by_sigma/scatter 跟随 x dtype（bf16）
+- 外层 `autocast(enabled=False)` **不能**覆盖内层（嵌套语义内层获胜）→ Level C 不能靠
+  disabled 上下文实现
+- **Level C 可行方案（已验证）**：evaluator 侧**镜像 forward 调用序列**（调用相同的
+  frozen 子模块 vocab_embed/sigma_map/rotary/blocks/output_layer，仅去掉 bf16 autocast），
+  不改任何 frozen 文件；**镜像忠实性校验已通过**：blocks 段包 bf16 时镜像输出与 frozen
+  forward **逐位一致**；全 fp32 镜像输出超出 bf16 网格（真 fp32），峰值显存 0.84GB
+  （2×64），模型级 bf16 量化冲击 median 相对差 2.0e-3 / max 2.9e-2
+
+**Ladder 三级定义**：
+
+| Level | forward | 提取/聚合 | 预期 |
 |---|---|---|---|
-| pretrained（step0） | mechpilot_shared/checkpoint_0000.pth | {model, ema, step} | 全体共享 init |
-| formal v4.1 | s1/s2 × {1020, 5100, 10200} | 全量 {model,ema,opt,scaler,step} | lr=3e-5，10200 步 |
-| p1 v4.2 dense | s1/s2 × {2500} + meta | 全量 | **中间 dense（50–1020）权重已退役删除** |
-| v1.2 mechpilot | A/B/C/D ×2 × {500,1020,2500} + raw | {ema}/{model} | lr=3e-4 |
-| v2.1 pilot | U/H/L ×2 × {500,1020,2500} + raw | {ema}/{model} | lr=3e-4 |
-| RL | rlpilot eval_snapshot ×{50,100,250,500} + step500 | {model,ema,...} | RL 阶段 |
+| A（frozen 基线） | frozen 混合 forward（bf16 blocks） | 全 bf16（现状） | NLL 2⁻⁵/2⁻⁶、δ 2⁻⁶/2⁻⁷、CPI 2⁻⁹ 网格 |
+| B | frozen 混合 forward（bf16 blocks） | score.float() → fp32 log_softmax/δ/CE → fp64 聚合 | 网格消失；score 仍含模型级 bf16 舍入 |
+| C | 镜像 forward 全 fp32（blocks/output 也 fp32） | 同 B | 无任何量化；显存/速度需实测 |
 
-### 2.2 仅 frozen JSON（旧 bf16 evaluator，无权重）
-
-- results/p1_dense/：84 文件（s1/s2 × 7 dense steps × cpi/og/g1 × ema/raw）——dense 轨迹的
-  唯一现存来源（CE 为 bf16 量化口径）
-- results/vanilla/（formal v4.1 18 评估）、results/mechanism_pilot/（v1.2 53）、
-  results/mechanism_pilot_v21/（v2.1 76+分析）、results/pretrained/（基线）
-
-### 2.3 方差分解（基于现有 per-sample 数据，N=500）
-
-| 成分 | 估计 | 来源 |
-|---|---|---|
-| D. sample-level | per-sample \|δ\| SD = 0.45–0.54；500-sample SE = 0.020–0.024 | 各 run JSON |
-| A. within-run（500/1020/2500 三点） | SD 0.002–0.017（中位 ~0.008） | v1.2/v2.1 轨迹 |
-| B. between-seed @2500 | spread 0.002–0.037（U 类 0.037 为最大） | 7 组 policy×seed |
-| C. between-policy @2500（同 rep） | spread 0.025 / 0.035 | v2.1 |
-| pooled run-to-run | **14 runs SD = 0.0113**（range 0.264–0.309） | v1.2+v2.1 |
-| pretrained→SFT 衰减 | 0.3281 → 0.2786（−0.0495 ≈ 4.4× pooled SD） | 稳健可检 |
-
-### 2.4 功效结论
-
-- paired policy contrast（H vs L 型）的 per-seed 差估计 SE ≈ 0.010–0.017（sampling），
-  between-seed 差的 SD ≈ 0.02 → 2 seeds 下可检效应 ≳ 0.035；4 seeds ≳ 0.025；8 seeds ≳ 0.018。
-- **SESOI（smallest effect size of interest）= 0.02 CPI_abs**（≈40% 的衰减尺度 0.05；
-  低于此的 policy 效应在本设置下无科学意义）。
-- 结论：**现有 2-seed 资产功效不足**；Phase 1 以 within-run 关联（N 大）为主统计，
-  between-run 结论仅 exploratory；不把多个 checkpoint 当独立 training replicate。
+**Preflight 规格**：
+- 固定小样本集：frozen manifest 的 32 个均匀间隔样本（索引列表 + sha256，批量前冻结）；
+  2 个模型（pretrained step0 + v2.1-H1@2500）
+- 每 (level, model) 跑 delta-swap + CE 路径，输出：per-position NLL 原始值（网格检测：
+  GCD-of-differences / 网格外值占比）、CPI_abs/RMS/δ 分布、per-sample CE、VRAM、wall-time
+- **判定规则（预注册）**：
+  1. B 必须证明网格消失（否则 B 无意义）
+  2. 若 |CPI_B − CPI_C| < 0.003 且 |CE_B − CE_C| < 0.01（两者在全部测试模型上成立）
+     → 正式 evaluator = **Level B**（bf16 模型舍入对聚合统计影响可忽略，成本最低）
+  3. 否则 → 正式 evaluator = **Level C**（显存/速度须同时满足 8GB 预算与吞吐预算，
+     否则按 chunk 降档并记录）
+  4. A 始终为历史对照，不进正式 evaluator
+- 产出：`results/phase1_preflight/precision_ladder_report.json`（+报告小节），
+  **用户 review 通过后才允许批量运行**
 
 ---
 
-## 3. Phase 1.1 — FP32 diagnostic evaluator 设计（新 versioned evaluator）
+## 4. Phase 1.2 — 新旧 evaluator bridge（保留 v0.1 设计）
 
-**定位**：新 diagnostic evaluator，**绝不替换** frozen v1.2/v2.1 evaluator；旧结果保持原样。
-
-**精度边界（已探针确认，2026-10-07）**：
-- frozen 实现的 model forward 内部启用 bf16（`model/transformer.py:282` autocast，Day-1 修复
-  的一部分，FROZEN 不可改）→ score 输出 bf16 → 旧 evaluator 全链 bf16（实测：NLL 2⁻⁵/2⁻⁶、
-  δ 2⁻⁶/2⁻⁷、CPI_abs 2⁻⁹ 网格）
-- 新 evaluator 规格：
-  1. model forward **保持原样**（bf16 输出，不修改 frozen model 代码）
-  2. `score.float()` 后立即提取：log_softmax **fp32**、δ **fp32**、CE/NLL **fp32**
-  3. aggregation（均值/分位数/SD）**fp64**
-  4. 明确记录剩余限制：score 值本身仍为 bf16 舍入（相对 ~2⁻⁸–2⁻⁹）——**不假装 fp32 evaluator
-     = ground truth**
-  5. 确定性检查（同输入逐位一致）+ provenance：git commit / manifest sha / 自身文件 sha256
-     sidecar / DIAG_PROTOCOL_VERSION=v1
-- 模块：`evaluation/eval_diag_fp32.py`（新文件，不动任何 frozen 文件）；输出
-  `results/phase1_diag/`
-- **review gate：实现 + 单测 + 1 checkpoint 冒烟后停下，用户 review 通过才允许批量运行**
+Bridge set 11 checkpoint 预注册（pretrained + p1-s1/s2@2500 + formal-s1/s2@{1020,10200}
++ v2.1 U1/H1/L1@1020、@2500 + v1.2 A1@1020、@2500；精确清单批量前冻结落盘 sha256）。
+每 checkpoint 跑 old frozen + 新（B 或 C 由 §3 判定）两套；比较 CPI_abs/RMS/signed δ/
+CE-NLL/acc 的绝对差、rank preservation（Spearman）、Pearson、衰减方向一致性。
+禁止为对齐两套数字调新 evaluator。
 
 ---
 
-## 4. Phase 1.2 — 新旧 evaluator bridge（预注册）
+## 5. Phase 1.3 — Primary / Secondary 预注册（保留 v0.1 + 修订 #2）
 
-**Bridge set（11 checkpoints，训练前冻结）**：
-1. pretrained（step0）
-2. p1-s1：2500（+ formal-s1：1020 / 10200 作长程补充）
-3. p1-s2：2500（+ formal-s2：1020 / 10200）
-4. v2.1：U1/H1/L1 @1020、@2500（6 个）
-5. v1.2：A1 @1020、@2500（2 个）
+**两层 inference 明确分离（修订 #2，硬性纪律）**：
+- **Level-1 sample-level association**：固定 checkpoint 内 500 样本的 per-sample
+  CE vs CPI 关联（独立样本，有效推断）
+- **Level-2 training-run trajectory association**：checkpoint 间 Δ 配对（within-run），
+  **checkpoints 不是独立 training replicates**、跨 checkpoint 相关——仅 exploratory
+- **禁止**：把 500 samples × N checkpoints 拼成 500N 个"独立"样本做显著性
 
-（最终 11 个精确清单在批量运行前冻结落盘。）
+Primary（P1-1/2/3 判据不变：同向 + CI 排除 0 / 一致关联 bootstrap CI）。
 
-每 checkpoint 同时跑：old frozen evaluator（eval_cpi + eval_task）与 new FP32 evaluator。
-比较（全部落盘）：CPI_abs / CPI_RMS / signed δ / conditional CE-NLL / token acc 的
-绝对差、rank/order preservation（Spearman ρ）、Pearson r、**衰减方向是否一致**。
-判定目的：旧 evaluator 的历史结论与新 evaluator 的 dynamics trend 是否可衔接。
-**禁止**为了让两套数字一致去调新 evaluator。
-
----
-
-## 5. Phase 1.3 — Primary / Secondary 预注册
-
-**Primary（三个，不扩散）**：
-- **P1-1**：FP32 conditional CE/NLL trajectory 是否随 SFT 稳定下降？（within-run 轨迹 +
-  pretrained→SFT 方向；判定=同向 + CI 排除 0）
-- **P1-2**：FP32 CPI_abs trajectory 是否随 SFT 稳定下降？（同上）
-- **P1-3**：within-run ΔCE vs ΔCPI 是否在多个 run/policy 中一致关联？（per-run 相邻
-  checkpoint 对的 Δ 配对，跨 run pooled Spearman/Pearson + bootstrap CI；**观测性关联，
-  不声称因果**）
-
-**Secondary**：CPI_RMS、signed δ、δ 分布（见 §6）、OrderGap（§7）、path-score variance、
+Secondary：CPI_RMS、δ 分布（§6）、finite-path OrderGap（§7）、path-score variance、
 score scale、entropy、calibration（reliability）、token acc。
 
 ---
 
-## 6. δ 分布报告规范（机制意义）
+## 6. δ 分布报告规范（保留）
 
-不得只报 mean |δ|。每 checkpoint 必须报告：median |δ|、P75、P90、P95、RMS、signed mean、
-positive/negative fraction、outlier fraction（定义：|δ| > 2×δ_SD，或 > P95，二者都报）。
-判读问题：CPI attenuation 是 **A. 整分布左移** 还是 **B. 少数 extreme curl outlier 减少**——
-对机制解释有本质区别。方法：per-quantile 的 step0→SFT 变化表（P50/P75/P90/P95/RMS 各自
-的相对变化）。
+median |δ|、P75/P90/P95、RMS、signed mean、positive/negative fraction、outlier fraction
+（|δ| > 2×δ_SD 与 > P95 双口径）；per-quantile 的 step0→SFT 变化表 → 判读
+"A. 整分布左移 vs B. 尾部 outlier 减少"。
 
 ---
 
-## 7. OrderGap 定义固定（命名规范）
+## 7. finite-path OrderGap（保留，命名固定）
 
-- 名称：**finite-path OrderGap**（非"全排列 OrderGap"）
-- 定义：在 **固定 6 条冻结路径**（l2r / r2l / random_0/1/2 / confidence，manifest paths 字段，
-  构建期冻结）上计算 Q_π，OrderGap = max_π Q − min_π Q；**明确不声称枚举 m! 排列**。
-- 报告：n_paths=6、mean/SEM、per-sample path-score variance、sampling uncertainty
-  （path-set 的有限性说明）；span length 分布（m̄≈21.7）。
-- 小 span exhaustive 子集（m ≤ 7 才可枚举）单独报告（仅当 manifest 中存在小 span 样本；
-  当前 m∈[10,50] 无 exhaustive 子集——记为 deferred）。
+固定 6 冻结路径（l2r/r2l/random×3/confidence，manifest paths）；OrderGap = max−min 于
+该有限 path set；报告 n_paths、mean/SEM、path-score variance、sampling uncertainty；
+明确不声称枚举 m!；小 span exhaustive（m≤7）当前 manifest 无此子集 → deferred。
 
 ---
 
-## 8. Phase 1.4 — Lead-lag / temporal ordering diagnostic（重要新分析）
+## 8. Phase 1.4 — Lead-lag / temporal ordering diagnostic（修订 #5：Option B DEFER）
 
-**资产现实**：p1 dense 中间权重（50/100/250/500/750/1020）已退役删除；现存：
-- 选项 A（零训练）：用 results/p1_dense 的旧 JSON（bf16 口径 CE，量化 0.0156–0.031；
-  ΔCE 信号 ~0.05–0.1/间隔，勉强可用）做 lead-lag——作为 **exploratory pre-analysis**
-- 选项 B（需用户批准）：Gate-2 已证明 P1 recipe 逐字节可复现（checkpoint_1020 位级一致）→
-  **确定性重训恢复 dense 权重**（2 × ~18min、~33GB 磁盘）→ 跑 FP32 evaluator 得精口径
-  dense 轨迹。这不是新实验，是已退役资产的确定性再生；但属训练时间，**待用户裁定**。
-
-**定义（选项 A/B 通用）**：
-- 时间轴 = checkpoint step（50/100/250/500/750/1020/2500），7 点
-- per-run：ΔCE(t) = CE(t) − CE(t−1)，ΔCPI(t) 同理（t 为相邻 checkpoint 索引）
-- 统计：within-run lag-1 cross-correlation——corr(ΔCE_t, ΔCPI_{t+1}) vs
-  corr(ΔCPI_t, ΔCE_{t+1})，per-run 计算 + 跨 run 汇总（bootstrap）
-- **命名纪律**：lead-lag / temporal ordering diagnostic；**禁止称 Granger causality**
-  （checkpoint 数少、非时间序列设定）
-- 判读：CE 先降且 CPI 后降 → 支持 "estimation improvement precedes compatibility
-  attenuation"；同步 → 只支持 co-evolution；CPI 先降 → generic estimation-error
-  hypothesis 被削弱。
+- **正式证据链（零训练）**：FP32 dynamics 于现有权重——v2.1/v1.2 的 {500,1020,2500}
+  三点轨迹 ×14 runs + formal v4.1 的 {1020,5100,10200} ×2 seeds（更长程）
+- **旧 p1 dense JSON（84 文件，bf16 口径 CE）只作 secondary historical lead-lag
+  evidence**，明确标注口径限制
+- **Option B（dense 确定性重训）= DEFER**：只有 Phase 1 在上述证据中出现值得追的
+  temporal signal 后，才向用户提案是否重训（Gate-2 保证可逐字节复现，2×~18min+~33GB）
+- 统计（同 v0.1）：within-run lag-1 cross-correlation，corr(ΔCE_t, ΔCPI_{t+1}) vs
+  corr(ΔCPI_t, ΔCE_{t+1})；per-run + 跨 run bootstrap；命名纪律：lead-lag / temporal
+  ordering diagnostic，**禁称 Granger causality**
+- 判读三分支不变（CE 先 / 同步 / CPI 先）
 
 ---
 
-## 9. 统计计划
+## 9. 统计计划（修订 #2/#3）
 
-1. 每条 training run 独立 trajectory（主报告元素，不折叠）
-2. effect size + bootstrap CI（10k，seed=0，v1.2 同款）
-3. pooled exploratory regression：CPI ~ CE + checkpoint + (1|run)（mixed-effects 仅
-   exploratory；n_runs 小，p-value 不作主结论）
-4. within-run centering：CPI_rt − mean_r(CPI) vs CE_rt − mean_r(CE)，减少 seed-level
-   offset 干扰
-
----
-
-## 10. 多重比较
-
-- Primary 三问：**不做 FDR 扩散**（各自独立预注册判据）
-- Secondary exploratory：大量 correlations/metrics 时用 **BH-FDR**；报告 raw p、adjusted q、
-  effect size、CI；**禁止从 secondary 中挑显著结果升级成 primary**。
+1. 每条 training run 独立 trajectory（主报告元素）
+2. effect size + bootstrap CI（10k seed=0）
+3. pooled / mixed-effects 回归（CPI ~ CE + checkpoint + (1|run)）**仅 exploratory**；
+   n_runs 小，p-value 不作主结论
+4. within-run centering：CPI_rt − mean_r(CPI) vs CE_rt − mean_r(CE)
+5. **Leave-one-experiment-family-out robustness（修订 #3）**：family =
+   {formal(v4.1), v1.2-AB, v1.2-CD, v2.1-HUL, p1-dense(historical)}；逐 family 拿掉后
+   重新估计 CE–CPI association（斜率/Spearman/Δ 配对方向），报告估计范围；
+   primary 结论须对 leave-out 稳定
 
 ---
 
-## 11. SESOI 与 stopping rule
+## 10. 多重比较（保留）
 
-- SESOI = **0.02 CPI_abs**（依据 §2.4）；CE 侧 SESOI = 0.05 nats（对应 pretrained→SFT
-  CE 变化 4.28→~4.03 的同阶 ~20%）。
-- Phase 1 结束三结局（全部允许）：
-  - **A. 明确稳定 association**（P1-3 一致关联 + lead-lag 一致方向）→ 进入 Phase 2 设计深化
-  - **B. 明确无明显 association**（P1-3 与 lead-lag 均无一致信号）→ 机制假设修正，重新设计
-  - **C. 现有 power 不足**（CI 宽度 > SESOI 且无法区分）→ 记录 power 需求，交用户裁定
-    （加 seeds / 恢复 dense / 放弃该路线）
+Primary 不扩散；secondary 用 BH-FDR；报告 raw p / adjusted q / effect size / CI；
+禁止把 secondary 中挑出的显著结果升级成 primary。
+
+---
+
+## 11. SESOI 与 stopping rule（修订 #4）
+
+- **research-scale SESOI = 0.02 CPI_abs**（≈40% 衰减尺度；依据 §2 方差分解）
+- **敏感性分析**：0.01 / 0.02 / 0.03 三档分别报告可检性与结论敏感性
+- CE 侧对应 SESOI = 0.05 nats（pretrained→SFT CE 变化的 ~20%）
+- 三结局保留：A 明确稳定 association / B 明确无 association / C 现有 power 不足
+  （CI 宽度 > SESOI 无法区分）→ 交用户裁定
 
 ---
 
 ## 12. 执行清单与 review gates
 
-1. [ ] 用户 review 本 DRAFT → 修订 → FROZEN
-2. [ ] FP32 evaluator 实现 + 单测 + 1-checkpoint 冒烟 → **停下 review**
-3. [ ] bridge set 精确清单冻结落盘（sha256）
-4. [ ] bridge 批量运行（11 × 2 evaluators，~2–3h GPU，用户 tmux）
-5. [ ] P1-1/P1-2/P1-3 + δ 分布 + OrderGap + lead-lag（选项 A 先行）分析
-6. [ ] 报告（三结局判定 + SESOI 对照）→ 停下，用户裁定 Phase 2 / 选项 B
+1. [ ] 用户 review v0.2 → 修订 → FROZEN
+2. [ ] precision-ladder preflight（§3：32 样本 × 2 模型 × 3 levels，~10min GPU）
+   → 报告 + **停下 review（定 B 或 C）**
+3. [ ] 正式 FP32 evaluator 实现（`evaluation/eval_diag_fp32.py`，versioned，不改 frozen）
+   + 单测 + 1-checkpoint 冒烟 → **停下 review**
+4. [ ] bridge 精确清单冻结（sha256）→ bridge 批量（~2–3h，用户 tmux）
+5. [ ] P1-1/2/3 + δ 分布 + OrderGap + lead-lag（正式证据链）分析 + leave-out 稳健性
+6. [ ] 报告（三结局 + SESOI 敏感性）→ 停下，用户裁定 Phase 2 / Option B
 
-**GPU/磁盘估算**：bridge ≈2–3h；FP32 evaluator 与旧 evaluator 同为 inference-only；
-lead-lag 选项 B（若批准）= 2×~18min + ~33GB。
-**禁止**：新训练（除选项 B 明确批准）、改 frozen 资产、把多 checkpoint 当独立 replicate。
+**禁止**：新训练（Option B 明确 DEFER）、改 frozen 资产、把多 checkpoint/sample 当独立
+training replicates、FP32 bulk 评估在 review gate 前运行。
