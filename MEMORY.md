@@ -459,3 +459,18 @@
 - [x] grouped CV（secondary）：M0(CE) MSE 0.2142 → M1(CE+JS) 0.1368（−36%）→ M3 0.1416；JS_dep 有 held-out 预测力、D_ab 增益小；CV 增益≠因果（用户纪律）
 - [x] **Case C**：无结构信号；决定性 250–1020 窗口在幸存 checkpoint（500/1020/2500）分辨率下不可分辨（dense 中间权重已删；旧 JSON 无 JS/D_ab）；Case B 签名部分出现在错误窗口（1020→2500 的 |δ|↓ + D_ab/JS 平）
 - [ ] 停止，等用户裁定：targeted Phase 2B（selected checkpoints × 64 子集 × confidence-first）/ mechanism-screening stop / empirical framing
+
+### Option B s2 磁盘事故恢复 + deterministic 重跑（2026-10-07，commit d2e8b7c，未 push）
+
+- [x] 事故：s2 dense retrain 因 D 盘写满死在 step~1020（VHD 增长耗尽宿主盘）；VHD 已迁 F；重复失败 s1 run（213031）已删并留 failed_run_213031.log
+- [x] 审计（torch.load 实证）：648M dense=EMA-only {ema,step}；1.3G anchor={ema,step,model}（500/1020/2500）；meta=EMA-only 不可 resume；vanilla restore_ckpt 需 optimizer/scaler 全缺；且全库无 RNG/dataloader/corruption 序列化 → 无 trajectory-preserving resume，裁定从 step 0 重跑（用户批准方案 2）
+- [x] 新增 scripts/optionb_dense_retrain_safe.py（atomic save + 宿主 F 盘 guard 32G/20G + save_sizes.csv，训练数学零改动）+ scripts/optionb_s2_repro_gate.py（tensor equality 优先 > loss 逐位 > SHA256 辅助，用户 v2 优先级）
+- [x] 重跑启动：tmux s2rerun，optionb-dense-s2-230610，PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True（首次启动 step2 OOM 碎片化，allocator 修复数学零改动）；首启失败残留 optionb-dense-s2-230404（仅 1 步日志，无 ckpt，保留待用户裁定）
+- [x] 重跑完成：optionb-dense-s2-230610，2500 步 / 1126s / 峰值 6.40GB，seeds (2,2,2)；全程 guard 无触发，F 盘 96.96G→78G
+- [x] s2 deterministic repro gate = **严格 PASS**（worst_max_rel=0）：50/100/150/200/250/300/350/400/500/750 的 EMA 130/130 + 500 的 model 131/131 全部 torch.equal；step/decay/num_updates 全一致；43 条重叠 train/eval/lr 日志逐位一致；曲线 500/1000/1500/2000/2500 与 frozen p1-s2 逐位一致；SHA256 因序列化层不同而不同（已实证 torch.save fileobj vs path 字节不同但 tensor 全等，SHA 仅辅助）
+- [x] official optionb_repro_gate = **PASS（bitwise 全过 + 指标一致）**：s1/s2 @2500 EMA+model 全 True、@1020 vs formal EMA 全 True、4 组指标 diff 全 0.0（s1 门首次执行）
+- [x] dense pairs 26/26 完成（无异常，VRAM 3.94G/ckpt）
+- [x] optionb_dense_analysis 完成（修复两处崩溃：死代码标量索引 + 窗口键打印；另修正 step0 键位使 0–250 窗口纳入 pretrained 起点——不影响 verdict）
+- [x] 机械 verdict 曾输出 Case B，但经用户 2026-10-08 最终裁定 = **Case A（generic conditional-estimation improvement），with a replicated but non-independent D_ab correlate**。JS_dep 全程 −6.27%/−6.04%（modest but reproducible），但 0–250 已占全程下降 ~48%/~45%、active window −3.39%/−4.15% 与 active 前同量级（vs CPI −9.61%/−10.42%）→ timing mismatch / 无独立 transition；D_ab 与 CE per-seed Spearman ρ=−1（14 点完全 rank-monotonic，pooled 28 点 −0.996）、1020 后继续上升不 plateau；脚本未实现 CE-adjusted independence
+- [x] 收尾：verdict 合规化（93c8e44：independence 未实现时脚本只输出 B_candidate_unadjudicated + case_b_full_criteria_met=false / missing_criterion=independence_from_ce）+ 人工 adjudication 文件 results/phase2/optionb_case_adjudication.md；D_ab 定名 "robust correlate of training progress / compatibility improvement whose independence from conditional-estimation improvement is not established"（不称 mechanism）
+- [ ] 待用户确认：commit 结果文件（dense_pairs 26 + 3 gate/analysis JSON + adjudication md + MEMORY.md）→ 批准后删除旧 s2 215621（7.6G ext4 logical；宿主 F 需 compact 才回收）与失败残留 230404/230455；**Phase 2B/PAPL/Swap/2×2/Phase 2C 继续禁止**

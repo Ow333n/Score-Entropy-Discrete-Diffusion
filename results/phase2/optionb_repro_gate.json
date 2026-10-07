@@ -1,0 +1,100 @@
+{
+  "gate": {
+    "bitwise": {
+      "s1@2500": {
+        "ema": true,
+        "model": true
+      },
+      "s1@1020_vs_formal": {
+        "ema": true
+      },
+      "s2@2500": {
+        "ema": true,
+        "model": true
+      },
+      "s2@1020_vs_formal": {
+        "ema": true
+      }
+    },
+    "metrics": {
+      "s1@500": {
+        "retrain": {
+          "cpi": 0.3046875,
+          "ce": 4.125,
+          "acc": 0.33328181505203247
+        },
+        "frozen": {
+          "cpi": 0.3046875,
+          "ce": 4.125,
+          "acc": 0.33328181505203247
+        },
+        "diffs": {
+          "cpi": 0.0,
+          "rms": 0.0,
+          "ce": 0.0,
+          "acc": 0.0
+        }
+      },
+      "s1@2500": {
+        "retrain": {
+          "cpi": 0.28515625,
+          "ce": 3.9375,
+          "acc": 0.3525758385658264
+        },
+        "frozen": {
+          "cpi": 0.28515625,
+          "ce": 3.9375,
+          "acc": 0.3525758385658264
+        },
+        "diffs": {
+          "cpi": 0.0,
+          "rms": 0.0,
+          "ce": 0.0,
+          "acc": 0.0
+        }
+      },
+      "s2@500": {
+        "retrain": {
+          "cpi": 0.310546875,
+          "ce": 4.125,
+          "acc": 0.334028422832489
+        },
+        "frozen": {
+          "cpi": 0.310546875,
+          "ce": 4.125,
+          "acc": 0.334028422832489
+        },
+        "diffs": {
+          "cpi": 0.0,
+          "rms": 0.0,
+          "ce": 0.0,
+          "acc": 0.0
+        }
+      },
+      "s2@2500": {
+        "retrain": {
+          "cpi": 0.287109375,
+          "ce": 3.953125,
+          "acc": 0.35216188430786133
+        },
+        "frozen": {
+          "cpi": 0.287109375,
+          "ce": 3.953125,
+          "acc": 0.35216188430786133
+        },
+        "diffs": {
+          "cpi": 0.0,
+          "rms": 0.0,
+          "ce": 0.0,
+          "acc": 0.0
+        }
+      }
+    }
+  },
+  "verdict": "PASS\uff08bitwise \u5168\u8fc7 + \u6307\u6807\u4e00\u81f4\uff09",
+  "manifest_sha256": "1897bd14bf92e61b2664a4950a3b60f14e09ac0d454d58d22e88815207f263d3",
+  "retrain_dirs": {
+    "s1": "/home/admin/WorkSpace/SEDD/Score-Entropy-Discrete-Diffusion/exp_local/regime_a/optionb-dense-s1-213551",
+    "s2": "/home/admin/WorkSpace/SEDD/Score-Entropy-Discrete-Diffusion/exp_local/regime_a/optionb-dense-s2-230610"
+  }
+}

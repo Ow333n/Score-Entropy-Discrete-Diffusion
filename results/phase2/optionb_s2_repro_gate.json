@@ -1,0 +1,292 @@
+{
+  "old": "/home/admin/WorkSpace/SEDD/Score-Entropy-Discrete-Diffusion/exp_local/regime_a/optionb-dense-s2-215621",
+  "new": "/home/admin/WorkSpace/SEDD/Score-Entropy-Discrete-Diffusion/exp_local/regime_a/optionb-dense-s2-230610",
+  "checkpoints": {
+    "50": {
+      "step": 50,
+      "sha256": {
+        "old": "c093a615a42dce1cd5951563b2badd31bc3edeb49451a5869e81adf40bb6260f",
+        "new": "168a8d986521f13747131d06771e6a585a207c1da74ca508b781f19b140b215c"
+      },
+      "meta": {
+        "step_old": 50,
+        "step_new": 50,
+        "decay_old": 0.9999,
+        "decay_new": 0.9999,
+        "num_updates_old": 50,
+        "num_updates_new": 50
+      },
+      "tensors": {
+        "ema": {
+          "name": "ema_shadow",
+          "n": 130,
+          "n_equal": 130,
+          "max_abs": 0.0,
+          "max_rel": 0.0,
+          "affected": []
+        }
+      }
+    },
+    "100": {
+      "step": 100,
+      "sha256": {
+        "old": "dc5df6097c6e4dd5efc72d17716d80c099939f02c24a7a5fd05200ef4bc52f39",
+        "new": "e69e7c32103f4759881b921f63ef192de1d1d359e1b2e85313c117f8ea433f9c"
+      },
+      "meta": {
+        "step_old": 100,
+        "step_new": 100,
+        "decay_old": 0.9999,
+        "decay_new": 0.9999,
+        "num_updates_old": 100,
+        "num_updates_new": 100
+      },
+      "tensors": {
+        "ema": {
+          "name": "ema_shadow",
+          "n": 130,
+          "n_equal": 130,
+          "max_abs": 0.0,
+          "max_rel": 0.0,
+          "affected": []
+        }
+      }
+    },
+    "150": {
+      "step": 150,
+      "sha256": {
+        "old": "1c16b7053432ed6e0013312dc0bd248bc8b945dde5b32ee5cee353e46fba6419",
+        "new": "b0cb9941eeda5c4f17df0f996c420ddc494d33c4e0cf11fc2126cadcd1d7488e"
+      },
+      "meta": {
+        "step_old": 150,
+        "step_new": 150,
+        "decay_old": 0.9999,
+        "decay_new": 0.9999,
+        "num_updates_old": 150,
+        "num_updates_new": 150
+      },
+      "tensors": {
+        "ema": {
+          "name": "ema_shadow",
+          "n": 130,
+          "n_equal": 130,
+          "max_abs": 0.0,
+          "max_rel": 0.0,
+          "affected": []
+        }
+      }
+    },
+    "200": {
+      "step": 200,
+      "sha256": {
+        "old": "8233497949afa733d4a21cf011cf05f56a4480b22f7345bcbe3f5b8f8360cbad",
+        "new": "11480430f7b6c7d12bb26ca352f1decf43c4a6f0fb03592c0950aa4247d99bd1"
+      },
+      "meta": {
+        "step_old": 200,
+        "step_new": 200,
+        "decay_old": 0.9999,
+        "decay_new": 0.9999,
+        "num_updates_old": 200,
+        "num_updates_new": 200
+      },
+      "tensors": {
+        "ema": {
+          "name": "ema_shadow",
+          "n": 130,
+          "n_equal": 130,
+          "max_abs": 0.0,
+          "max_rel": 0.0,
+          "affected": []
+        }
+      }
+    },
+    "250": {
+      "step": 250,
+      "sha256": {
+        "old": "969fdb1c6ff6de39aa78b4be56c320a15b7b2fda4661733f8270c028ac424574",
+        "new": "e1f13a172d5fcb276829e28dd90c2536473ac8fbf508b40d3612353ff77c5e8d"
+      },
+      "meta": {
+        "step_old": 250,
+        "step_new": 250,
+        "decay_old": 0.9999,
+        "decay_new": 0.9999,
+        "num_updates_old": 250,
+        "num_updates_new": 250
+      },
+      "tensors": {
+        "ema": {
+          "name": "ema_shadow",
+          "n": 130,
+          "n_equal": 130,
+          "max_abs": 0.0,
+          "max_rel": 0.0,
+          "affected": []
+        }
+      }
+    },
+    "300": {
+      "step": 300,
+      "sha256": {
+        "old": "6dadc10843f5a7146aeed7618f69ef828255055dde320e62dae5b84212ff427c",
+        "new": "68c6f4ac24fb862dea27eb01cfcf0e2468e3914839f330a5b2fbc7962db73f52"
+      },
+      "meta": {
+        "step_old": 300,
+        "step_new": 300,
+        "decay_old": 0.9999,
+        "decay_new": 0.9999,
+        "num_updates_old": 300,
+        "num_updates_new": 300
+      },
+      "tensors": {
+        "ema": {
+          "name": "ema_shadow",
+          "n": 130,
+          "n_equal": 130,
+          "max_abs": 0.0,
+          "max_rel": 0.0,
+          "affected": []
+        }
+      }
+    },
+    "350": {
+      "step": 350,
+      "sha256": {
+        "old": "9407ce2477c9689f491c2a5109c62d58563f3d4b1e99701d555954c5b07ad990",
+        "new": "eefc987dcbe72e1f5635b260c80afa0b0f9d464524a3872f083182ca8cce3800"
+      },
+      "meta": {
+        "step_old": 350,
+        "step_new": 350,
+        "decay_old": 0.9999,
+        "decay_new": 0.9999,
+        "num_updates_old": 350,
+        "num_updates_new": 350
+      },
+      "tensors": {
+        "ema": {
+          "name": "ema_shadow",
+          "n": 130,
+          "n_equal": 130,
+          "max_abs": 0.0,
+          "max_rel": 0.0,
+          "affected": []
+        }
+      }
+    },
+    "400": {
+      "step": 400,
+      "sha256": {
+        "old": "3c9fc38ee691524ebd7e2fe16f03a4525e06c3f1ae1fc5a019722b1e30a048bb",
+        "new": "fedfbb7e864118de39a4d134b612466ad988a49cfc9d44dd2012a9de9c40e301"
+      },
+      "meta": {
+        "step_old": 400,
+        "step_new": 400,
+        "decay_old": 0.9999,
+        "decay_new": 0.9999,
+        "num_updates_old": 400,
+        "num_updates_new": 400
+      },
+      "tensors": {
+        "ema": {
+          "name": "ema_shadow",
+          "n": 130,
+          "n_equal": 130,
+          "max_abs": 0.0,
+          "max_rel": 0.0,
+          "affected": []
+        }
+      }
+    },
+    "500": {
+      "step": 500,
+      "sha256": {
+        "old": "09b747080cea39a1255f79192f04bbc8615a4d8cf7fde994565b17c77882e372",
+        "new": "25a911cf63bd655cd0465b7f1bccf78db91e0d6bf5885751107006a456ad7a43"
+      },
+      "meta": {
+        "step_old": 500,
+        "step_new": 500,
+        "decay_old": 0.9999,
+        "decay_new": 0.9999,
+        "num_updates_old": 500,
+        "num_updates_new": 500
+      },
+      "tensors": {
+        "ema": {
+          "name": "ema_shadow",
+          "n": 130,
+          "n_equal": 130,
+          "max_abs": 0.0,
+          "max_rel": 0.0,
+          "affected": []
+        },
+        "model": {
+          "name": "model",
+          "n": 131,
+          "n_equal": 131,
+          "max_abs": 0.0,
+          "max_rel": 0.0,
+          "affected": []
+        }
+      }
+    },
+    "750": {
+      "step": 750,
+      "sha256": {
+        "old": "2121fa66706ba1c5557c0bba1a638a8c6a7523e51982292665110f699f7b9cf0",
+        "new": "076841db1ed461b8b8bb5f1a7e5e32b5599f4e4a491c5b2515f78d5d9cf97b7e"
+      },
+      "meta": {
+        "step_old": 750,
+        "step_new": 750,
+        "decay_old": 0.9999,
+        "decay_new": 0.9999,
+        "num_updates_old": 750,
+        "num_updates_new": 750
+      },
+      "tensors": {
+        "ema": {
+          "name": "ema_shadow",
+          "n": 130,
+          "n_equal": 130,
+          "max_abs": 0.0,
+          "max_rel": 0.0,
+          "affected": []
+        }
+      }
+    }
+  },
+  "losses": {
+    "curve": {
+      "500": {
+        "old": [
+          "500,6.577018737792969,7.016587859412539,6e-06"
+        ],
+        "new": [
+          "500,6.577018737792969,7.016587859412539,6e-06"
+        ],
+        "equal": true
+      },
+      "1000": {
+        "old": [
+          "1000,6.057842254638672,6.901735457446193,1.2e-05"
+        ],
+        "new": [
+          "1000,6.057842254638672,6.901735457446193,1.2e-05"
+        ],
+        "equal": true
+      }
+    },
+    "log": {
+      "n_shared": 43,
+      "mismatches": []
+    }
+  },
+  "verdict": "PASS",
+  "worst_max_rel": 0.0
+}
