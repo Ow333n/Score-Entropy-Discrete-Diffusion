@@ -379,3 +379,17 @@
 - [x] **⚠️ 重大发现（provenance patch 期）**：hydra 合并语义下 `model: small` 在 defaults 中排在 `_self_` 之后 → small.yaml 的 **dropout=0.1 覆盖 vanilla_256.yaml 的 dropout: 0.0** → **全部既往 SFT/mechpilot run 与 v2.1 smoke 实际都在 dropout=0.1 下训练**（v1.2/v2.1 协议文本"dropout=0"从未在执行中成立；模型 train 模式确实应用 dropout）。确定性不受损（checkpoint 保存/恢复 RNG state + p1 Gate-2 逐字节复现实证）。按 LR 同一裁定原则固定 **dropout=0.1 = actual executed setting**，透明记录不改旧文本
 - [x] push 完成：**HEAD == origin/main == 2c7212444aae16fa7b3d5eb5ac88d91a76ef5b82（正式 pilot start commit）**，tree clean
 - [ ] **正式 pilot 启动命令已交用户**（tmux）：`bash scripts/run_v21_pilot.sh`（U1→H1→L1→U2→H2→L2，~2h）→ 完成后 `bash scripts/run_v21_evals.sh`（~3-3.5h）；任何 run NaN/OOM/hash/schedule/checkpoint 异常 → 驱动自动硬停；D: free <15GB → 完成当前 run 后停止
+
+### v2.1 正式 6-run pilot 完成 + G3 分析（2026-10-07）
+
+- [x] 6 runs 全部完成（v21pilot-U1 224400 → L2 001746，各 ~19min，零 NaN/OOM/dxg，VRAM 6.41GB，exact-K 0 违反，digest/E_comp/C̄ 与 dryrun 逐位一致，pilot_start_commit=108147f5）
+- [x] 评估 76 文件全部落盘（global 36 + treated 12 + heldout 18 + subset 6 + step0 4），manifest sha 全一致
+- [x] **G3 分析完成**（scripts/v21_g3_analysis.py + v21_g3_analysis.json，commit f9d9c3b 本地未 push）：
+  - **G3a PASS**（8 项全过）
+  - **G3b INCONCLUSIVE**：treated H−L @2500 = +0.0055 CI[−0.0055,+0.016]，两 replicate 异号（−0.0009/+0.0119）——H 的 treated CPI 并未更低；所有 policy 的 treated CPI 从 step0 ~0.345 均匀衰减到 ~0.30
+  - **G3c INCONCLUSIVE**：primary H−L = +0.0108 CI[−0.0215,+0.0442]（pooled 方向与预测相反但两 replicate 异号）；H vs U / U vs L 均 INC；U 不居中（H 0.2812 / U 0.2900 / L 0.2705 pooled）
+  - **G3d MATCHED**（ΔNLL 全 0.0000）+ 匹配后重做 G3c 仍 INC；**⚠ 重要披露**：masked NLL 量化到 bf16 网格（get_score_fn 的 autocast bf16，frozen evaluator 预存在性质，v4.1 基线 4.281 同样量化；粒度 ≈0.016–0.031 > ±0.02 容差 → 同桶即匹配，匹配应解读为"评估器分辨率下无 NLL 分离"）
+  - **Case C**（§1.1 措辞：no stable supporting evidence；不表述"已被证明无效"）；§15.1 confirmatory 条件不满足（H-vs-L 不同向）→ 不进入 confirmatory，不盲目加 seeds
+  - 关键观察：U 与 v1.2-A 统计同分布（A1 0.2734/A2 0.2715/U1 0.2715/U2 0.3086）→ 四 run 全距 0.037，run 间 SD≈0.02 量级与 H−L 假设效应同阶——pilot 功效不足的直接证据（报告用）
+  - 附带：treated/heldout/global 三口径一致均匀衰减（step0→2500 各 ~0.04–0.05）；§9.5 OG subset 12.35→H 11.92/U 11.21/L 11.15（64 样本 SE≈1.1，无排序）；path-score Var 33.3→27.9–33.0；confound 七项跨 policy 仅 intended 差异（transition H 略高）；δ_SD/localCE ≈0.042–0.045；D: free 27GB
+- [ ] 等用户复核报告后再定：正式报告文件 / push / confirmatory 决策
