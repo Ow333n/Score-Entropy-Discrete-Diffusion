@@ -21,10 +21,10 @@ AP=$(sha256sum protocol/phase1_compatibility_estimation_dynamics_DRAFT.md | cut 
 EXPECTED_CORE=ef1ef03ea08da87fb75eda6049311e2dd4ae91ab1a9f29dfa9d57cdcc6064030
 AC=$(sha256sum evaluation/eval_diag_fp32.py | cut -d' ' -f1)
 [ "$AC" == "$EXPECTED_CORE" ] || { echo "FATAL: core FP32 evaluator 被改动"; exit 1; }
-EXPECTED_BM=$(sha256sum results/phase1_diag/bulk_manifest.json | cut -d' ' -f1)
+EXPECTED_BM=3b970159ecc6818beeefd2250d141ae54c7ea309a0dbb85e84415abe9c7bcc6c
 AB=$(sha256sum results/phase1_diag/bulk_manifest.json | cut -d' ' -f1)
-[ "$AB" == "$EXPECTED_BM" ] || { echo "FATAL: bulk manifest 自校验失败"; exit 1; }
-echo "OK: 守卫通过（manifest/protocol/core-evaluator sha）"
+[ "$AB" == "$EXPECTED_BM" ] || { echo "FATAL: bulk manifest 被改动"; exit 1; }
+echo "OK: 守卫通过（manifest/protocol/core-evaluator/bulk-manifest sha）"
 
 $PY - <<'EOF'
 import json, os, subprocess, sys
@@ -42,9 +42,11 @@ for c in man["checkpoints"]:
             continue
         os.makedirs(os.path.dirname(out), exist_ok=True)
         print(f"=== {kind} {cid} ===", flush=True)
+        # weights 为 manifest 顶层全局字段（全部 checkpoint 均 ema）
         r = subprocess.run([".venv/bin/python", script,
                             "--model_path", c["path"], "--ckpt", c["ckpt"],
-                            "--weights", c["weights"], "--tag", f"phase1-{kind}-{cid}",
+                            "--weights", c.get("weights", "ema"),
+                            "--tag", f"phase1-{kind}-{cid}",
                             "--out", out] + extra)
         if r.returncode != 0:
             print(f"FATAL: {kind} {cid} 失败 exit={r.returncode}")
