@@ -120,8 +120,8 @@ def main():
         do = old[b]["summary"]["cpi_abs"] - old[a]["summary"]["cpi_abs"]
         dn = new[b]["summary"]["cpi_abs"] - new[a]["summary"]["cpi_abs"]
         direction.append(dict(pair=tag, d_old=do, d_new=dn,
-                              same_sign=(np.sign(do) == np.sign(dn) != 0),
-                              d_zero=(abs(do) < 1e-9 or abs(dn) < 1e-9)))
+                              same_sign=bool(np.sign(do) == np.sign(dn) != 0),
+                              d_zero=bool(abs(do) < 1e-9 or abs(dn) < 1e-9)))
     agree = sum(1 for d in direction if d["same_sign"])
     n_nz = sum(1 for d in direction if not d["d_zero"])
     core = [d for d in direction if d["pair"] == "pretrained→SFT"]
@@ -144,14 +144,14 @@ def main():
     ps_new_d = np.concatenate([np.array(new[c]["per_sample"]["delta"]) for c in ids])
     ps_old_ce = np.concatenate([np.array(old[c]["per_sample"]["local_ce"]) for c in ids])
     ps_new_ce = np.concatenate([np.array(new[c]["per_sample"]["local_ce"]) for c in ids])
-    def agree(a, b):
+    def pairwise_agree(a, b):
         return dict(pearson=float(np.corrcoef(a, b)[0, 1]),
                     spearman=spearman_kendall(a, b)[0],
                     diff_mean=float((b - a).mean()), diff_sd=float((b - a).std()))
     per_sample = dict(
-        abs_delta=agree(ps_old_abs, ps_new_abs),
-        signed_delta=agree(ps_old_d, ps_new_d),
-        local_ce=agree(ps_old_ce, ps_new_ce))
+        abs_delta=pairwise_agree(ps_old_abs, ps_new_abs),
+        signed_delta=pairwise_agree(ps_old_d, ps_new_d),
+        local_ce=pairwise_agree(ps_old_ce, ps_new_ce))
     per_ckpt_pearson = []
     for cid in ids:
         for key, k_new, k_old in (("abs_delta", "delta_abs", "delta_abs"),
@@ -175,10 +175,12 @@ def main():
     quant = dict(n_values=len(ps_old_ce), unique_old=uniq_old, unique_new=uniq_new,
                  old_median_spacing=spacing,
                  old_spacing_hist=[float(x) for x in np.unique(np.round(pos_diffs, 6))[:10]],
-                 ce_rank_spearman_pooled=agree(ps_old_ce, ps_new_ce)["spearman"])
+                 ce_rank_spearman_pooled=pairwise_agree(ps_old_ce, ps_new_ce)["spearman"])
 
     # ---- Case 判定（协议 §4，FROZEN）----
-    direction_ok = core_agree == len(core) and core_agree == n_nz
+    # direction_ok = 核心 pretrained→SFT 全部对同号（BRIDGE-C 的判据只针对核心方向，
+    # 不混入 within-run 小效应对）
+    direction_ok = core_agree == len(core)
     cpi_rank_high = rank["cpi"]["spearman"] >= 0.9
     per_sample_high = per_sample["abs_delta"]["pearson"] >= 0.9
     ce_rank_changed = rank["ce"]["spearman"] < 0.7
