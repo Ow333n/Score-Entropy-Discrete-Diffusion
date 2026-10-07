@@ -63,6 +63,7 @@ def bootstrap_ci(x, n_boot=N_BOOT, seed=BOOT_SEED):
 
 def cluster_bootstrap(diffs, n_boot=N_BOOT, seed=BOOT_SEED):
     """run 聚类 bootstrap（checkpoints within run 非独立，按 run 重采样）。"""
+    diffs = [np.asarray(d) for d in diffs]
     rng = np.random.default_rng(seed)
     k = len(diffs)
     sizes = [len(d) for d in diffs]
@@ -272,6 +273,50 @@ def main():
         note="sample-level SE（~0.02）是固定模型估计精度；run-level SD 是训练层面噪声；"
              "两者不可互换；独立 training replicates 数少（≤2/family）")
 
+    # ---- secondary：p1-dense historical（旧 bf16 JSON，7 点轨迹；口径限制标注）----
+    p1_hist = {}
+    import glob as _glob
+    for seed in ("s1", "s2"):
+        steps = [50, 100, 250, 500, 750, 1020, 2500]
+        tr = []
+        for s in steps:
+            f = f"{ROOT}/results/p1_dense/cpi_{seed}_{s}_ema.json"
+            if _glob.glob(f):
+                d = j(f)
+                tr.append(dict(step=s, cpi=d["summary"]["cpi_abs"],
+                               ce=d["summary"]["local_ce"]))
+        if len(tr) >= 3:
+            base_cpi = tr[0]["cpi"]
+            base_ce = tr[0]["ce"]
+            dce = np.array([t["ce"] - base_ce for t in tr[1:]])
+            dcpi = np.array([t["cpi"] - base_cpi for t in tr[1:]])
+            segs = [(tr[i + 1]["ce"] - tr[i]["ce"], tr[i + 1]["cpi"] - tr[i]["cpi"])
+                    for i in range(len(tr) - 1)]
+            lag_ce, lag_cpi = [], []
+            for i in range(len(segs) - 1):
+                lag_ce.append((segs[i][0], segs[i + 1][1]))
+                lag_cpi.append((segs[i][1], segs[i + 1][0]))
+            p1_hist[seed] = dict(
+                n_points=len(tr), within_spearman=spearman(dce, dcpi),
+                within_slope=float(np.polyfit(dce, dcpi, 1)[0]) if len(dce) >= 2 else None,
+                ce_leads_s=spearman(*zip(*lag_ce)) if lag_ce else None,
+                cpi_leads_s=spearman(*zip(*lag_cpi)) if lag_cpi else None,
+                note="旧 bf16 evaluator 口径（CE 量化 0.0156–0.031）；secondary historical only")
+    # ---- secondary：跨 run 终点关联（between-run 结构）----
+    finals = {}
+    for k in runs:
+        t = traj[k]
+        last = max(t, key=lambda x: x["step"])
+        finals[k] = last
+    fin_ce = np.array([finals[k]["dce"] for k in runs])
+    fin_cpi = np.array([finals[k]["dcpi"] for k in runs])
+    between_run = dict(
+        n_runs=len(runs),
+        spearman=spearman(fin_ce, fin_cpi),
+        pearson=pearson(fin_ce, fin_cpi),
+        note="跨 run 终点（ΔCE_final vs ΔCPI_final）：run 间结构，含 between-run "
+             "confounding；不作独立 replicate 假设")
+
     # ---- Verdict（P1-A/B/C，用户 §18 判据；operationalization 与输出一并披露）----
     ce_improved = float(np.mean([p["dce"] for k in runs for p in traj[k]])) < 0
     rel_stable = (within_run["pooled_spearman"] >= 0.5 and slope_ci[1] < 0)
@@ -298,6 +343,8 @@ def main():
         delta_distribution=delta_shape,
         ordergap=ordergap,
         lead_lag=leadlag,
+        p1_dense_historical=p1_hist,
+        between_run_finals=between_run,
         uncertainty=uncertainty,
         sesoi_grid=list(SESOI_GRID),
         verdict=verdict,
@@ -325,7 +372,12 @@ def main():
           f"q95={delta_shape['q95']['rel_change']:+.1%}")
     print(f"  OrderGap: base={og_base:.2f} finals={ {k: round(v,2) for k, v in og_fin.items()} }")
     print(f"  lead-lag: ce_leads S={leadlag['ce_leads']['spearman']:+.3f} / "
-          f"cpi_leads S={leadlag['cpi_leads']['spearman']:+.3f}（exploratory）")
+          f"cpi_leads S={leadlag['cpi_leads']['spearman']:+.3f}（exploratory，{leadlag['n_lag_pairs']} 对）")
+    print(f"  between-run finals: Spearman={between_run['spearman']:+.3f} "
+          f"Pearson={between_run['pearson']:+.3f}")
+    for s, h in p1_hist.items():
+        print(f"  p1-dense {s}（旧 bf16，secondary）: within S={h['within_spearman']:+.3f} "
+              f"ce_leads S={h['ce_leads_s']:+.3f} cpi_leads S={h['cpi_leads_s']:+.3f}")
     print(f"\n  VERDICT: {verdict}")
     print(f"\nsaved: {os.path.join(DIAG, 'phase1_dynamics_analysis.json')}")
 
