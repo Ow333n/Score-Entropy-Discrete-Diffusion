@@ -419,3 +419,12 @@
 - [x] 6/6 GPU 单测 PASS（scripts/test_diag_fp32.py）：mirror fidelity（bf16 块下与 frozen 逐位一致）/ deterministic rerun / no-bf16-lattice（off-grid 100%）/ chunk 1-2-4-8 不变 / RNG 隔离 / batch-order 不变（diff=0）
 - [x] smoke PASS：H1@2500 × 32-sample ladder subset 与 ladder-C 参考**逐位一致**（CPI 0.2139 / RMS 0.3766 / δ̄ +0.0986 / CE 4.3281）；VRAM 3.60GB / 1.1s
 - [ ] 等用户 review → 下一步才允许 bridge bulk（11 checkpoint 冻结清单 + 新旧双 evaluator，~2–3h 用户 tmux）
+
+### Phase 1.2 Bridge 完成：BRIDGE-A（2026-10-07，commit 9ccc7e8 已 push）
+
+- [x] bridge manifest FROZEN（986dcf1d…）：**披露 11/15 计数差异**——FROZEN 协议 §4 标"11"但枚举实列 15 个（起草失误），按"不增删枚举"原则冻结全部 15 个
+- [x] 30/30 双 evaluator 文件（15 old BF16 重跑 + 15 new FP32，完全同样本 500 manifest）
+- [x] **BRIDGE-A**：核心 pretrained→SFT 14/14 方向保存（ΔCPI 全负）；CPI ranking Spearman 0.9821/Kendall 0.9596；per-sample |δ| 0.9963/signed 0.9970/CE 1.0000；shift CPI mean −0.0032 / CE mean −0.0007；CE 量化实证（old unique 597 vs new 7500、spacing 0.0078）但 rank 仍高度保存（S=0.9643）
+- [x] 2 个不同号对均为 within-run 近零小效应（v21-H1 1020→2500 old Δ=+0.0000 恰为 bf16 同桶；formal-s1 1020→10200 ±0.002）
+- [x] 诊断图 bridge_scatter.png（force-add，*.png 被 gitignore；程序化校验过、环境无法目检已披露）
+- [ ] 等用户 review → 下一步才允许 Phase 1 bulk FP32 dynamics（P1-1/2/3 + lead-lag + leave-one-out）
