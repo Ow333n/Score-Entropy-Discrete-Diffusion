@@ -1,6 +1,14 @@
-# Phase 2 — Parallel Decoding Mechanism Decomposition：Protocol DRAFT v0.2
+# Phase 2 — Parallel Decoding Mechanism Decomposition：Protocol
 
-**状态：DRAFT v0.2（v0.1 + 用户修订 7–14；待 review；只设计，不运行）**
+**状态：FINAL v0.2 — FROZEN（2026-10-07；用户批准，冻结后禁止修改指标定义 / 协议 / 判定规则）**
+**修订记录**：v0.1（初版）→ v0.2（用户修订 7–14：JS dependence proxy、D_ab 降级、NFE 两栏、
+primary endpoints 固定两个、三报告、嵌套模型）→ **v0.2 FROZEN（最终 3 小修）**：
+① sample-level 措辞纪律（见 Phase 1 协议 §5）② B-vs-C engineering tolerances 标记
+（见 Phase 1 协议 §3）③ **grouped 5-fold CV**（group key = 底层 evaluation sample /
+masked example ID；同一样本派生的 tokens / block sizes / paths / scheduler observations
+全部同 fold，禁止跨 fold 泄漏）+ 分 endpoint 评价指标（token recovery：held-out R²/MSE；
+exact-span：held-out log-loss/Brier，AUROC 仅 secondary；**binary exact-span 禁用普通 R²
+作主指标**）。
 **前序**：Phase 1 给出方向后才执行
 **核心问题**：更低的 CPI/curl 是否真的意味着更好的 decoding-order robustness /
 parallel decoding？CPI（compatibility）≠ tokens conditionally independent——即使 CPI≈0，
@@ -118,7 +126,7 @@ JS_dep 与 D_ab 均有数值稳定性单测（对称性、恒等零、界、toy 
 
 ---
 
-## 5. 增量预测价值（修订 #13，预注册嵌套模型）
+## 5. 增量预测价值（修订 #13 + FROZEN 修订 ③，预注册嵌套模型）
 
 不是问"CPI 与 decoding failure 有没有 correlation"，而是已知 CE / Dependence 之后
 CPI 是否仍有额外解释力。Sample-level（500 样本），Failure = per-position GT recovery
@@ -126,8 +134,18 @@ miss（primary 1 的样本级版本）：
 
 - **Base**：Failure ~ CE + Dependence(JS)
 - **Extended**：Failure ~ CE + Dependence(JS) + CPI(|δ|)
-- 比较：**cross-validated ΔR² / prediction loss（5-fold CV 必须）**；不作 in-sample
-  显著性主结论
+
+**CV 设计（FROZEN 修订 ③：grouped 5-fold CV）**：
+- **group key = 底层 evaluation sample / masked example ID**——同一原始 sample 派生出的
+  全部 tokens、block sizes、paths、scheduler observations 及一切相关 measurement
+  **必须留在同一个 fold**；禁止任何跨 train/test fold 泄漏
+- 分 endpoint 评价（primary 分开）：
+  - **A. token recovery accuracy（回归型）**：held-out **R²** + held-out **MSE**；
+    增量 = **ΔR² / ΔMSE**
+  - **B. exact-span recovery（二元型）**：held-out **log-loss** + held-out **Brier score**；
+    增量 = **Δlog-loss / ΔBrier**；AUROC 仅 secondary
+  - **禁止对 binary exact-span 使用普通 R² 作主指标**
+- 不作 in-sample 显著性主结论
 - **额外 baseline**：entropy、confidence、token_distance 单独加入 Extended（每次加一，
   控制 predictor 总数 ≤ 6，防小样本过拟合）
 

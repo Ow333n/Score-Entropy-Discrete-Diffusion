@@ -1,6 +1,11 @@
-# Phase 1 — Compatibility–Estimation Dynamics：Protocol DRAFT v0.2
+# Phase 1 — Compatibility–Estimation Dynamics：Protocol
 
-**状态：DRAFT v0.2（v0.1 + 用户修订 1–6；待 review；不执行、不冻结）**
+**状态：FINAL v0.2 — FROZEN（2026-10-07；用户批准，冻结后禁止修改 hypothesis / gate / 判定规则）**
+**修订记录**：v0.1（初版）→ v0.2（用户修订 1–6：precision-ladder 前置门、两层 inference
+分离、leave-one-family-out、SESOI 敏感性、Option B DEFER）→ **v0.2 FROZEN（最终 3 小修）**：
+① sample-level inference 措辞纪律句（英文原文入 §5）② B-vs-C 容差标记为
+"pre-registered engineering equivalence tolerances"（非 statistical equivalence test）
+③ Phase 2 grouped CV（见 Phase 2 协议）。
 **前序**：v1.2 / v2.1 已关闭（v2.1 frozen 报告 sha256 `dd3cdb26…`，Case C）
 **原则**：observation / mechanism-diagnostic study；CPI 与 CE 强相关也不能声称因果。
 
@@ -59,10 +64,13 @@ spread 0.002–0.037；14-run pooled SD = **0.0113**；pretrained→SFT 衰减 0
 - 每 (level, model) 跑 delta-swap + CE 路径，输出：per-position NLL 原始值（网格检测：
   GCD-of-differences / 网格外值占比）、CPI_abs/RMS/δ 分布、per-sample CE、VRAM、wall-time
 - **判定规则（预注册）**：
-  1. B 必须证明网格消失（否则 B 无意义）
-  2. 若 |CPI_B − CPI_C| < 0.003 且 |CE_B − CE_C| < 0.01（两者在全部测试模型上成立）
-     → 正式 evaluator = **Level B**（bf16 模型舍入对聚合统计影响可忽略，成本最低）
-  3. 否则 → 正式 evaluator = **Level C**（显存/速度须同时满足 8GB 预算与吞吐预算，
+  1. B 必须证明主要 NLL lattice / quantization artifact 消失（否则 B 无意义）
+  2. B 与 C 均落入以下 **pre-registered engineering equivalence tolerances**（明确标记：
+     **不是正式 statistical equivalence test**，只是工程等价容差）：
+     |ΔCPI_B−C| < 0.003 且 |ΔCE_B−C| < 0.01（两者在全部测试模型上成立）
+  3. **选择规则**：B 消除主要 NLL lattice 量化 **且** B 与 C 落入上述 engineering
+     tolerance → 正式 bulk evaluator = **Level B**（bf16 模型舍入对聚合统计影响在
+     容差内，成本最低）；**否则 → Level C**（显存/速度须同时满足 8GB 预算与吞吐预算，
      否则按 chunk 降档并记录）
   4. A 始终为历史对照，不进正式 evaluator
 - 产出：`results/phase1_preflight/precision_ladder_report.json`（+报告小节），
@@ -84,7 +92,10 @@ CE-NLL/acc 的绝对差、rank preservation（Spearman）、Pearson、衰减方�
 
 **两层 inference 明确分离（修订 #2，硬性纪律）**：
 - **Level-1 sample-level association**：固定 checkpoint 内 500 样本的 per-sample
-  CE vs CPI 关联（独立样本，有效推断）
+  CE vs CPI 关联（独立样本，有效推断）。措辞纪律（2026-10-07 补充，FROZEN）：
+  "Sample-level inference estimates within-checkpoint/sample heterogeneity conditional
+  on a fixed trained model. It does not increase the number of independent training
+  replicates."——500 samples / 多 checkpoints 不能被解释为增加 training-seed N。
 - **Level-2 training-run trajectory association**：checkpoint 间 Δ 配对（within-run），
   **checkpoints 不是独立 training replicates**、跨 checkpoint 相关——仅 exploratory
 - **禁止**：把 500 samples × N checkpoints 拼成 500N 个"独立"样本做显著性
