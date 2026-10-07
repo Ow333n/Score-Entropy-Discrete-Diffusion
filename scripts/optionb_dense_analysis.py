@@ -9,6 +9,8 @@
   → generic conditional estimation improvement = 最简解释；项目转 empirical framing
 - Case B：非 δ 派生结构量在两 seed 方向一致 + 集中于 active window + 1020 后
   plateau + 不能明显由 CE 单独解释 → candidate mechanism（才允许 Phase 2C 设计）
+  注（2026-10-08 用户裁定）："不能被 CE/NLL 单独解释" 判据未实现前，脚本只输出
+  B_candidate_unadjudicated，不输出正式 Case B；最终 Case 由人工 adjudication 定。
 - Case C：无复现结构信号 → mechanism-screening HARD STOP
 
 注意：PMI_forward−PMI_reverse≡δ（恒等），PMI 收敛不作独立 evidence；
@@ -173,18 +175,29 @@ def main():
     structural_win = (js_consistent and abs(m("js_dep", "s1")) > 0.001) or \
                      (dab_consistent and abs(m("d_ab", "s1")) > 0.001)
 
+    # 2026-10-08 用户裁定：§7 Case B 完整标准含 "不能被 CE/NLL 单独解释"。
+    # 该判据（CE-adjusted independence）尚未实现 → 脚本禁止输出正式 Case B，
+    # 只能输出 B_candidate_unadjudicated；最终 Case 由人工 adjudication 给出
+    # （本 run 的人工裁定：results/phase2/optionb_case_adjudication.md）。
+    case_b_full_criteria_met = False
+    case_b_missing_criterion = "independence_from_ce"
+
     if cpi_active_down and ce_active_down and not structural_win:
         case = ("A（generic estimation）：CPI 下降与 CE 改善同窗（250–750），"
                 "JS_dep/D_ab 无两 seed 一致的可复现 transition → 最简解释 = "
                 "generic conditional estimation improvement；项目转 empirical/diagnostic framing")
+        case_label = "A"
     elif cpi_active_down and structural_win:
-        case = ("B（non-trivial structural signal）：非 δ 派生结构量两 seed 方向一致、"
-                "集中于 active window、1020 后 plateau → candidate mechanism；"
-                "允许设计 Phase 2C causal intervention")
+        case = ("B_candidate_unadjudicated：非 δ 派生结构量方向一致 + 集中于 active window，"
+                "但 CE-adjusted independence 未检验（case_b_full_criteria_met=false, "
+                "missing_criterion=independence_from_ce）→ 不得视为正式 Case B；"
+                "最终 Case 以人工 adjudication 为准")
+        case_label = "B_candidate_unadjudicated"
     else:
         case = ("C（no replicated structural signal）：mechanism-screening HARD STOP；"
                 "保留 'partial-reveal SFT reproducibly improves CPI/OrderGap，但当前 "
                 "tested mechanisms 均不能解释该变化' 的 empirical result")
+        case_label = "C"
 
     out = dict(
         note="Option B dense trajectory 分析（gate 见用户 2026-10-07 §7）",
@@ -197,6 +210,9 @@ def main():
         two_seed_agreement=agree,
         adjacent_deltas=deltas,
         case=case,
+        case_label=case_label,
+        case_b_full_criteria_met=case_b_full_criteria_met,
+        case_b_missing_criterion=case_b_missing_criterion,
         case_components=dict(
             cpi_active_down=cpi_active_down, ce_active_down=ce_active_down,
             js_consistent=js_consistent, dab_consistent=dab_consistent,
