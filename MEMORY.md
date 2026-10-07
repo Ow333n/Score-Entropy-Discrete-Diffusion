@@ -402,3 +402,12 @@
 - [x] **Phase 1 DRAFT**（protocol/phase1_compatibility_estimation_dynamics_DRAFT.md）：FP32 diagnostic evaluator 规格（score.float() 后 fp32 提取+fp64 聚合，model forward bf16 限制如实记录，review gate：批量运行前停）；bridge 11 checkpoint；P1-1/2/3；δ 分布报告（左移 vs 尾部，quantiles+outlier fraction）；finite-path OrderGap 命名；lead-lag（选项 A=旧 JSON exploratory / 选项 B=Gate-2 确定性重训恢复 dense 2×18min+33GB 待裁定；禁称 Granger）；FDR/SESOI/stopping 三结局
 - [x] **Phase 2 DRAFT**（protocol/phase2_parallel_decoding_decomposition_DRAFT.md）：**D_ab 定义检查定案**——δ=PMI_a→b−PMI_b→a（差）、D_ab=0.5(两者和)（均值），实证 corr(δ,D_ab)=0.018 近正交、D_ab mean +0.20 sharpening 偏移 → primary dependence proxy 改 KL 分布口径（零额外 forward），D_ab 留 secondary，禁称 TC；block decoding 冻结规格（1/2/4/8、三种位置选择、greedy 主、NFE=轮数）；NFE 三比较+frontier；primary=GT recovery accuracy；嵌套模型+5-fold CV；循环解释禁令；Phase 3 matching axes 只记录
 - [ ] **当前状态**：等用户 review 两个 DRAFT → FROZEN → FP32 evaluator 实现+冒烟 → 再停下 review。禁止：新训练/新 mask policy/Phase 3/大规模 decoding
+
+### Phase 1/2 DRAFT v0.2（2026-10-07，吸收用户 14 条修订，commit 51cef2d 已 push）
+
+- [x] 用户批准总体方向 + 14 条修订全部落实
+- [x] **precision-ladder preflight 设计定案**：三级 A（frozen bf16）/ B（bf16 forward + fp32 提取）/ C（真 fp32 forward）；**探针新发现**：frozen forward 是混合精度（vocab_embed/sigma_map/rotary 在 autocast 外 fp32、blocks/output_layer 在 bf16 内）；外层 autocast(enabled=False) 不能覆盖内层（嵌套语义内层获胜）→ **Level C = evaluator 侧镜像 forward 调用序列**（同 frozen 子模块、去 autocast；blocks 段 bf16 下与 frozen forward 逐位一致已验证；全 fp32 值超出 bf16 网格；模型级量化冲击 median 2e-3/max 2.9e-2；显存 0.84GB@2×64）；判定规则：|ΔCPI_B−C|<0.003 且 |ΔCE|<0.01 → B，否则 C；review gate 后才允许批量
+- [x] 两层 inference 分离（sample-level vs trajectory-level，禁把 checkpoint/样本当独立 replicate）；leave-one-family-out（formal/v1.2-AB/v1.2-CD/v2.1-HUL/p1-dense 5 组）；SESOI=0.02+0.01/0.03 敏感性；**Option B dense 重训 DEFER**（正式证据链=现有权重 3 点轨迹 + formal 长程；旧 p1 dense JSON 仅 secondary historical）
+- [x] **JS dependence proxy 定案**（Phase 2 primary）：严格映射 score→clean-vocab softmax（frozen clean_log_probs 同源）；JS_dep=0.5[JSD(P_j^a‖Q_j)+JSD(P_i^b‖Q_i)]；性质：对称/∈[0,ln2]/JS=0⇒δ=0 但 δ=0⇏JS=0（严格更强）/非 δ 函数/fp64 log 域稳定/零额外 forward；toy 校验过（恒等零/近似不相交≈ln2/对称/极端分布稳定）；**D_ab 降级 secondary GT-conditioned**；禁称 TC
+- [x] NFE 严格定义：NFE_total=NFE_predict+NFE_select 两栏分列、选择 forward 逐次计入、greedy 主口径 NFE=轮数断言；primary endpoints 固定两个（token recovery accuracy + exact-span recovery）；三种报告（fixed-NFE/fixed-quality/frontier）；嵌套模型 Base=CE+Dep、Extended=+CPI、5-fold CV、entropy/confidence/distance 单加 baseline ≤6 predictors；Phase 3 继续 DEFER
+- [ ] 等用户 review v0.2 → FROZEN → precision-ladder preflight（~10min）→ 停下 review 定 B/C → FP32 evaluator 实现+冒烟 → 再停下
