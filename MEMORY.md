@@ -428,3 +428,17 @@
 - [x] 2 个不同号对均为 within-run 近零小效应（v21-H1 1020→2500 old Δ=+0.0000 恰为 bf16 同桶；formal-s1 1020→10200 ±0.002）
 - [x] 诊断图 bridge_scatter.png（force-add，*.png 被 gitignore；程序化校验过、环境无法目检已披露）
 - [ ] 等用户 review → 下一步才允许 Phase 1 bulk FP32 dynamics（P1-1/2/3 + lead-lag + leave-one-out）
+
+### Phase 1 bulk + dynamics 分析完成：P1-B（2026-10-07，commit ce14103 已 push）
+
+- [x] bulk 合并执行 165/165（55 checkpoint × 3 类型、模型加载 55 次、~2h、全程零新增 dxg 异常——15:34 瞬态窗口后 WDDM 自愈，未重启）
+- [x] 分析定案（phase1_dynamics_analysis.json）：
+  - **FP32 primary（17 runs 3 点轨迹）：within-run ΔCE vs ΔCPI 无稳定共变**——Spearman −0.105、per-run 斜率 71% 为负（mean CI [−0.618, −0.029]）；family slopes 不一致（formal +0.17/AB −0.66/CD −0.11/HUL −0.37/RL 噪声）；leave-one-out 不稳
+  - between-run finals：弱正（Spearman +0.152/Pearson +0.375，n=17）——run 级结构存在但弱
+  - **δ 分布 = 整体收缩非尾部抑制**（mean −14.7%、median −27.8%、P75/P90/P95 全降 12–19%）
+  - OrderGap 全 family 下降（12.26→10.24–11.41）
+  - **p1-dense 旧 JSON（secondary）关键信号**：within-run +1.0/+0.89 强正 + ce_leads 提示（+0.6/+0.9 vs +0.1/−0.7）→ CE–CPI 共变位于**早期窗口（50–750 步）**，与 frozen P1"CPI 衰减定位 250–750"一致；幸存 500/1020+ checkpoint 全部起于窗口之后 → 3 点轨迹看不到共变是分辨率/窗口问题
+  - RL：CE/CPI 均几乎不动（500 步 Δ<0.005），−2.86 斜率为噪声
+  - **VERDICT = P1-B**（FP32 primary 口径）+ 早期窗口 temporal signal 披露 → Option B 重训成为活选项（待用户裁定）
+- [x] 坑：.gitignore 裸 `core` 模式误伤 results/phase1_diag/core/ → force-add 入库
+- [ ] 等用户 review 后裁定：Phase 2 decoding decomposition / Option B 确定性重训 / 其他
