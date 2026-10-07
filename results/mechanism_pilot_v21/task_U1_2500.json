@@ -1,0 +1,17 @@
+{
+  "tag": "v21-U1-2500",
+  "model_path": "exp_local/regime_a/v21pilot-U1-224400",
+  "source": "local-ema (exp_local/regime_a/v21pilot-U1-224400)",
+  "step": 2500,
+  "protocol_version": "v4.2",
+  "manifest_file": "manifests/regime_a_eval_v1.jsonl",
+  "manifest_sha256": "1897bd14bf92e61b2664a4950a3b60f14e09ac0d454d58d22e88815207f263d3",
+  "git_commit": "108147f5d8728e0546c0159e2e2fc86bba4be0e1",
+  "masked_nll": 4.0625,
+  "masked_nll_sem": 0.07826237921249264,
+  "token_acc": 0.3421381115913391,
+  "token_acc_sem": 0.010153479840236849,
+  "greedy_per_pos_hit_rate": 0.4726972721221913,
+  "greedy_span_exact_match": 0.02,
+  "n_greedy": 100
+}

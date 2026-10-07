@@ -1,0 +1,17 @@
+{
+  "tag": "v21-L2-1020",
+  "model_path": "exp_local/regime_a/v21pilot-L2-001746",
+  "source": "local-ema (exp_local/regime_a/v21pilot-L2-001746)",
+  "step": 1020,
+  "protocol_version": "v4.2",
+  "manifest_file": "manifests/regime_a_eval_v1.jsonl",
+  "manifest_sha256": "1897bd14bf92e61b2664a4950a3b60f14e09ac0d454d58d22e88815207f263d3",
+  "git_commit": "108147f5d8728e0546c0159e2e2fc86bba4be0e1",
+  "masked_nll": 3.96875,
+  "masked_nll_sem": 0.07896115045546132,
+  "token_acc": 0.3523663878440857,
+  "token_acc_sem": 0.01017021381534422,
+  "greedy_per_pos_hit_rate": 0.46202721954794673,
+  "greedy_span_exact_match": 0.03,
+  "n_greedy": 100
+}
