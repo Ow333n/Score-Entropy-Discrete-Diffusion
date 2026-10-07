@@ -1,0 +1,153 @@
+{
+  "subset": {
+    "indices": [
+      0,
+      16,
+      32,
+      48,
+      64,
+      80,
+      97,
+      113,
+      129,
+      145,
+      161,
+      177,
+      193,
+      209,
+      225,
+      241,
+      258,
+      274,
+      290,
+      306,
+      322,
+      338,
+      354,
+      370,
+      386,
+      402,
+      419,
+      435,
+      451,
+      467,
+      483,
+      499
+    ],
+    "sha256": "f03515fb087fbcb20f34aff497aa9769937728702712835542c9a26bbe25e74c",
+    "manifest_sha256": "1897bd14bf92e61b2664a4950a3b60f14e09ac0d454d58d22e88815207f263d3"
+  },
+  "levels": {
+    "step0": {
+      "A": {
+        "cpi_abs": 0.255859375,
+        "cpi_rms": 0.416015625,
+        "delta_mean": 0.0869140625,
+        "delta_sd": 0.4140625,
+        "ce": 4.6875,
+        "runtime_s": 0.6746704578399658,
+        "vram_gb": 1.331814912,
+        "lattice": {
+          "n": 32,
+          "off_bf16_grid_fraction": 0.0,
+          "off_fp16_grid_fraction": 0.0
+        }
+      },
+      "B": {
+        "cpi_abs": 0.24921869731042534,
+        "cpi_rms": 0.40061341339213996,
+        "delta_mean": 0.08798614924307913,
+        "delta_sd": 0.3970855691074268,
+        "ce": 4.686858784407377,
+        "runtime_s": 0.3714284896850586,
+        "vram_gb": 3.596214784,
+        "lattice": {
+          "n": 675,
+          "off_bf16_grid_fraction": 1.0,
+          "off_fp16_grid_fraction": 1.0
+        }
+      },
+      "C": {
+        "cpi_abs": 0.25249403284396976,
+        "cpi_rms": 0.3945015316194213,
+        "delta_mean": 0.0820461759576574,
+        "delta_sd": 0.3920498763013665,
+        "ce": 4.687669893261045,
+        "runtime_s": 0.9437258243560791,
+        "vram_gb": 3.596214784,
+        "lattice": {
+          "n": 675,
+          "off_bf16_grid_fraction": 1.0,
+          "off_fp16_grid_fraction": 1.0
+        }
+      }
+    },
+    "H1-2500": {
+      "A": {
+        "cpi_abs": 0.20703125,
+        "cpi_rms": 0.365234375,
+        "delta_mean": 0.09521484375,
+        "delta_sd": 0.357421875,
+        "ce": 4.3125,
+        "runtime_s": 0.31611084938049316,
+        "vram_gb": 1.331814912,
+        "lattice": {
+          "n": 32,
+          "off_bf16_grid_fraction": 0.0,
+          "off_fp16_grid_fraction": 0.0
+        }
+      },
+      "B": {
+        "cpi_abs": 0.21271027487819083,
+        "cpi_rms": 0.3699709878880448,
+        "delta_mean": 0.09457176268915646,
+        "delta_sd": 0.3634028616085199,
+        "ce": 4.326321664499119,
+        "runtime_s": 0.37023496627807617,
+        "vram_gb": 3.596214784,
+        "lattice": {
+          "n": 675,
+          "off_bf16_grid_fraction": 1.0,
+          "off_fp16_grid_fraction": 1.0
+        }
+      },
+      "C": {
+        "cpi_abs": 0.2138582991901785,
+        "cpi_rms": 0.37656554499492945,
+        "delta_mean": 0.09861286240629852,
+        "delta_sd": 0.3692393059779606,
+        "ce": 4.328081689542159,
+        "runtime_s": 0.8867313861846924,
+        "vram_gb": 3.596214784,
+        "lattice": {
+          "n": 675,
+          "off_bf16_grid_fraction": 1.0,
+          "off_fp16_grid_fraction": 1.0
+        }
+      }
+    }
+  },
+  "gate": {
+    "step0": {
+      "d_cpi_abs": 0.003275335533544421,
+      "d_ce_abs": 0.0008111088536679745,
+      "cpi_tol_ok": false,
+      "ce_tol_ok": true,
+      "b_lattice_removed": true,
+      "b_gate_pass": false
+    },
+    "H1-2500": {
+      "d_cpi_abs": 0.0011480243119876832,
+      "d_ce_abs": 0.001760025043040514,
+      "cpi_tol_ok": true,
+      "ce_tol_ok": true,
+      "b_lattice_removed": true,
+      "b_gate_pass": true
+    }
+  },
+  "a_fidelity": {
+    "frozen_cpi": 0.255859375,
+    "ladder_a_cpi": 0.255859375,
+    "diff": 0.0
+  }
+}
