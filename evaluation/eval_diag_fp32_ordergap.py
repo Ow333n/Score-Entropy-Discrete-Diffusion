@@ -37,18 +37,11 @@ SUBSET = os.path.join(ROOT, "exp_local/regime_a/mechpilot_v21_maps",
                       "order_gap_subset_indices.json")
 
 
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--model_path", required=True)
-    parser.add_argument("--ckpt", default=None)
-    parser.add_argument("--weights", default="ema", choices=["ema", "raw"])
-    parser.add_argument("--chunk", type=int, default=16)
-    parser.add_argument("--tag", default="diag-fp32-og")
-    parser.add_argument("--out", required=True)
-    args = parser.parse_args()
+def run(model, step, param_dtypes, model_path, ckpt, weights, chunk, tag, out):
+    """核心计算 + payload + 落盘（供 standalone main() 与合并执行器共用）。
 
-    digest_man = hashlib.sha256(open(MANIFEST, "rb").read()).hexdigest()
-    assert digest_man == MANIFEST_SHA, "manifest sha 变化，硬停"
+    数学与输出 schema 与 standalone 逐字段一致（模型由调用方加载）。
+    """
     subset = json.load(open(SUBSET))
     sub_digest = hashlib.sha256(open(SUBSET, "rb").read()).hexdigest()
     assert sub_digest == open(SUBSET + ".sha256").read().strip(), "subset 被改动"
@@ -57,7 +50,6 @@ def main():
     proto = OmegaConf.load(os.path.join(ROOT, "protocol/regime_a_protocol.yaml"))
     path_types = list(proto.eval_manifest.path_types)
 
-    model, step, param_dtypes = load_model(args.model_path, args.ckpt, args.weights)
     score_fn = lambda x, sigma: fp32_forward(model, x, sigma)
 
     records = [json.loads(line) for line in open(MANIFEST)]
@@ -70,7 +62,7 @@ def main():
                         x0=torch.tensor(r["x0"], device="cuda"),
                         sigma=r["sigma"], path=r["paths"][ptype])
                    for r in records]
-        Q = og.evaluate_path_Qs(score_fn, samples, D=D, chunk=args.chunk)
+        Q = og.evaluate_path_Qs(score_fn, samples, D=D, chunk=chunk)
         Q_by_path[ptype] = Q.cpu().double()
     peak = torch.cuda.max_memory_allocated() / 1e9
 
@@ -84,14 +76,14 @@ def main():
         return v.std(unbiased=True).item() / v.numel() ** 0.5
 
     payload = dict(
-        tag=args.tag,
+        tag=tag,
         diag_protocol_version=DIAG_PROTOCOL_VERSION,
         precision_mode=PRECISION_MODE,
         evaluator_file=os.path.relpath(os.path.abspath(__file__), ROOT),
         evaluator_sha256=hashlib.sha256(open(os.path.abspath(__file__), "rb").read()).hexdigest(),
         git_commit=subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT,
                                   capture_output=True, text=True).stdout.strip(),
-        model_path=args.model_path, ckpt=args.ckpt, weights=args.weights, step=step,
+        model_path=model_path, ckpt=ckpt, weights=weights, step=step,
         model_param_dtypes=param_dtypes,
         compute_dtype="fp32（镜像 forward）", aggregation_dtype="fp64",
         manifest_file=os.path.relpath(MANIFEST, ROOT), manifest_sha256=MANIFEST_SHA,
@@ -115,14 +107,32 @@ def main():
             path_score_variance=[float(x) for x in path_var.tolist()],
             Q_by_path={p: [float(x) for x in Q_by_path[p].tolist()] for p in path_types}),
         peak_vram_gb=peak)
-    os.makedirs(os.path.dirname(args.out), exist_ok=True)
-    with open(args.out, "w") as f:
+    os.makedirs(os.path.dirname(out), exist_ok=True)
+    with open(out, "w") as f:
         json.dump(payload, f, indent=2)
     s = payload["summary"]
-    print(f"FP32 finite-path OrderGap（{args.tag}）: OG_raw={s['order_gap_raw']:.4f} ± "
+    print(f"FP32 finite-path OrderGap（{tag}）: OG_raw={s['order_gap_raw']:.4f} ± "
           f"{s['order_gap_raw_sem']:.4f} | per-token={s['order_gap_per_token']:.4f} | "
           f"path-var={s['path_score_variance_mean']:.4f} | VRAM {peak:.2f}GB")
-    print(f"结果: {args.out}")
+    print(f"结果: {out}")
+    return payload
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--model_path", required=True)
+    parser.add_argument("--ckpt", default=None)
+    parser.add_argument("--weights", default="ema", choices=["ema", "raw"])
+    parser.add_argument("--chunk", type=int, default=16)
+    parser.add_argument("--tag", default="diag-fp32-og")
+    parser.add_argument("--out", required=True)
+    args = parser.parse_args()
+
+    digest_man = hashlib.sha256(open(MANIFEST, "rb").read()).hexdigest()
+    assert digest_man == MANIFEST_SHA, "manifest sha 变化，硬停"
+    model, step, param_dtypes = load_model(args.model_path, args.ckpt, args.weights)
+    run(model, step, param_dtypes, args.model_path, args.ckpt, args.weights,
+        args.chunk, args.tag, args.out)
 
 
 if __name__ == "__main__":

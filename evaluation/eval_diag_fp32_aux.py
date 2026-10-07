@@ -34,28 +34,19 @@ PRECISION_MODE = "true_fp32_mirrored_forward"
 N_BUCKETS = 10
 
 
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--model_path", required=True)
-    parser.add_argument("--ckpt", default=None)
-    parser.add_argument("--weights", default="ema", choices=["ema", "raw"])
-    parser.add_argument("--chunk", type=int, default=8)
-    parser.add_argument("--tag", default="diag-fp32-aux")
-    parser.add_argument("--out", required=True)
-    args = parser.parse_args()
+def run(model, step, param_dtypes, model_path, ckpt, weights, chunk, tag, out):
+    """核心计算 + payload + 落盘（供 standalone main() 与合并执行器共用）。
 
-    digest_man = hashlib.sha256(open(MANIFEST, "rb").read()).hexdigest()
-    assert digest_man == MANIFEST_SHA, "manifest sha 变化，硬停"
-
-    model, step, param_dtypes = load_model(args.model_path, args.ckpt, args.weights)
+    数学与输出 schema 与 standalone 逐字段一致（模型由调用方加载）。
+    """
     records = [json.loads(line) for line in open(MANIFEST)]
 
     entropy, confidence, ce = [], [], []
     confs_all, hits_all = [], []
     torch.cuda.reset_peak_memory_stats()
     with torch.no_grad():
-        for start in range(0, len(records), args.chunk):
-            ch = records[start:start + args.chunk]
+        for start in range(0, len(records), chunk):
+            ch = records[start:start + chunk]
             x_t = torch.stack([torch.tensor(r["initial_state"]) for r in ch]).to("cuda")
             x0 = torch.stack([torch.tensor(r["x0"]) for r in ch]).to("cuda")
             sigma = torch.tensor([r["sigma"] for r in ch], device="cuda")
@@ -98,14 +89,14 @@ def main():
     gt_logp_sd = ce_t.std(unbiased=True).item()
 
     payload = dict(
-        tag=args.tag,
+        tag=tag,
         diag_protocol_version=DIAG_PROTOCOL_VERSION,
         precision_mode=PRECISION_MODE,
         evaluator_file=os.path.relpath(os.path.abspath(__file__), ROOT),
         evaluator_sha256=hashlib.sha256(open(os.path.abspath(__file__), "rb").read()).hexdigest(),
         git_commit=subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT,
                                   capture_output=True, text=True).stdout.strip(),
-        model_path=args.model_path, ckpt=args.ckpt, weights=args.weights, step=step,
+        model_path=model_path, ckpt=ckpt, weights=weights, step=step,
         model_param_dtypes=param_dtypes,
         compute_dtype="fp32（镜像 forward）", extraction_dtype="fp32", aggregation_dtype="fp64",
         manifest_file=os.path.relpath(MANIFEST, ROOT), manifest_sha256=MANIFEST_SHA,
@@ -122,13 +113,32 @@ def main():
         per_sample=dict(
             entropy=entropy, confidence=confidence, local_ce=ce),
         peak_vram_gb=peak)
-    os.makedirs(os.path.dirname(args.out), exist_ok=True)
-    with open(args.out, "w") as f:
+    os.makedirs(os.path.dirname(out), exist_ok=True)
+    with open(out, "w") as f:
         json.dump(payload, f, indent=2)
     s = payload["summary"]
-    print(f"FP32 aux（{args.tag}）: entropy={s['entropy_mean']:.4f} conf={s['confidence_mean']:.4f} "
+    print(f"FP32 aux（{tag}）: entropy={s['entropy_mean']:.4f} conf={s['confidence_mean']:.4f} "
           f"gt_logp_mean={s['gt_logp_mean']:.4f} | VRAM {peak:.2f}GB")
-    print(f"结果: {args.out}")
+    print(f"结果: {out}")
+    return payload
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--model_path", required=True)
+    parser.add_argument("--ckpt", default=None)
+    parser.add_argument("--weights", default="ema", choices=["ema", "raw"])
+    parser.add_argument("--chunk", type=int, default=8)
+    parser.add_argument("--tag", default="diag-fp32-aux")
+    parser.add_argument("--out", required=True)
+    args = parser.parse_args()
+
+    digest_man = hashlib.sha256(open(MANIFEST, "rb").read()).hexdigest()
+    assert digest_man == MANIFEST_SHA, "manifest sha 变化，硬停"
+
+    model, step, param_dtypes = load_model(args.model_path, args.ckpt, args.weights)
+    run(model, step, param_dtypes, args.model_path, args.ckpt, args.weights,
+        args.chunk, args.tag, args.out)
 
 
 if __name__ == "__main__":
