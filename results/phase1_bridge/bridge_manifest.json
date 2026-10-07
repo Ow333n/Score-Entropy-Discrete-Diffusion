@@ -1,0 +1,45 @@
+{
+  "title": "Phase 1.2 bridge manifest（FROZEN，运行前冻结；结果出来后禁止增删 checkpoint）",
+  "generated_at": "2026-10-07",
+  "protocol": "protocol/phase1_compatibility_estimation_dynamics_DRAFT.md（FINAL v0.2 FROZEN）",
+  "protocol_sha256": "ec61491736dac5e54a3d857896585e2c0a49361405a705dd5b09a76dd8d46ee7",
+  "count_discrepancy_disclosure": "FROZEN 协议 §4 标注'11 checkpoints'，但其预注册枚举实际列出 15 个（起草计数失误）。处置：冻结枚举的全部 15 个，一个不删、一个不加；本 manifest 为权威清单。禁止以此为由事后增删。",
+  "checkpoints": [
+    {"id": "pretrained-step0", "path": "exp_local/regime_a/mechpilot_shared", "ckpt": "checkpoint_0000.pth", "weights": "ema", "family": "pretrained", "run": "shared-step0", "step": 0},
+    {"id": "p1-s1-2500", "path": "exp_local/regime_a/p1-s1-020240", "ckpt": "checkpoint_2500.pth", "weights": "ema", "family": "p1-v4.2", "run": "s1", "step": 2500},
+    {"id": "p1-s2-2500", "path": "exp_local/regime_a/p1-s2-110355", "ckpt": "checkpoint_2500.pth", "weights": "ema", "family": "p1-v4.2", "run": "s2", "step": 2500},
+    {"id": "formal-s1-1020", "path": "exp_local/regime_a/formal-vanilla-s1-191414", "ckpt": "checkpoint_1020.pth", "weights": "ema", "family": "formal-v4.1", "run": "s1", "step": 1020},
+    {"id": "formal-s1-10200", "path": "exp_local/regime_a/formal-vanilla-s1-191414", "ckpt": "checkpoint_10200.pth", "weights": "ema", "family": "formal-v4.1", "run": "s1", "step": 10200},
+    {"id": "formal-s2-1020", "path": "exp_local/regime_a/formal-vanilla-s2-204215", "ckpt": "checkpoint_1020.pth", "weights": "ema", "family": "formal-v4.1", "run": "s2", "step": 1020},
+    {"id": "formal-s2-10200", "path": "exp_local/regime_a/formal-vanilla-s2-204215", "ckpt": "checkpoint_10200.pth", "weights": "ema", "family": "formal-v4.1", "run": "s2", "step": 10200},
+    {"id": "v21-U1-1020", "path": "exp_local/regime_a/v21pilot-U1-224400", "ckpt": "checkpoint_1020.pth", "weights": "ema", "family": "v2.1-HUL", "run": "U1", "step": 1020},
+    {"id": "v21-H1-1020", "path": "exp_local/regime_a/v21pilot-H1-230242", "ckpt": "checkpoint_1020.pth", "weights": "ema", "family": "v2.1-HUL", "run": "H1", "step": 1020},
+    {"id": "v21-L1-1020", "path": "exp_local/regime_a/v21pilot-L1-232130", "ckpt": "checkpoint_1020.pth", "weights": "ema", "family": "v2.1-HUL", "run": "L1", "step": 1020},
+    {"id": "v21-U1-2500", "path": "exp_local/regime_a/v21pilot-U1-224400", "ckpt": "checkpoint_2500.pth", "weights": "ema", "family": "v2.1-HUL", "run": "U1", "step": 2500},
+    {"id": "v21-H1-2500", "path": "exp_local/regime_a/v21pilot-H1-230242", "ckpt": "checkpoint_2500.pth", "weights": "ema", "family": "v2.1-HUL", "run": "H1", "step": 2500},
+    {"id": "v21-L1-2500", "path": "exp_local/regime_a/v21pilot-L1-232130", "ckpt": "checkpoint_2500.pth", "weights": "ema", "family": "v2.1-HUL", "run": "L1", "step": 2500},
+    {"id": "v12-A1-1020", "path": "exp_local/regime_a/mechpilot-A1-133557", "ckpt": "checkpoint_1020.pth", "weights": "ema", "family": "v1.2-A", "run": "A1", "step": 1020},
+    {"id": "v12-A1-2500", "path": "exp_local/regime_a/mechpilot-A1-133557", "ckpt": "checkpoint_2500.pth", "weights": "ema", "family": "v1.2-A", "run": "A1", "step": 2500}
+  ],
+  "evaluation_samples": {
+    "manifest": "manifests/regime_a_eval_v1.jsonl",
+    "manifest_sha256": "1897bd14bf92e61b2664a4950a3b60f14e09ac0d454d58d22e88815207f263d3",
+    "sample_ids": "0..499（全 manifest，500 样本）",
+    "n_samples": 500,
+    "note": "两套 evaluator 完全同样本：相同 sample IDs / span / token pairs / corruption context / 有效样本数；deterministic（无 RNG，evaluator_seed=N/A）"
+  },
+  "evaluators": {
+    "old": {"name": "frozen BF16 evaluator", "file": "evaluation/eval_cpi.py", "sha256": "e8e250ba3a13243380de14212278c27775a759d9406ee348525472e33bcee07c", "chunk": 8, "weights": "ema"},
+    "new": {"name": "Level C true-FP32 diagnostic evaluator", "file": "evaluation/eval_diag_fp32.py", "sha256": "ef1ef03ea08da87fb75eda6049311e2dd4ae91ab1a9f29dfa9d57cdcc6064030", "chunk": 8, "weights": "ema", "precision_mode": "true_fp32_mirrored_forward", "diag_protocol_version": "v1", "aggregation_dtype": "fp64"}
+  },
+  "analysis_pre_registered": {
+    "A": "attenuation direction preservation：sign(ΔCPI_old)==sign(ΔCPI_fp32)，pre→post 对（pretrained→各 SFT）",
+    "B": "checkpoint ranking preservation：Spearman + Kendall（CPI_abs / CPI_RMS / CE/NLL 分别）",
+    "C": "absolute evaluator shift：FP32−BF16 的 mean/median/range（CPI_abs/RMS/signed δ/CE）",
+    "D": "per-sample agreement：|δ|/signed δ/local CE 的 Pearson/Spearman/paired diff 分布",
+    "E": "BF16 CE quantization impact：unique 值数 / lattice spacing / off-grid fraction / rank preservation",
+    "cases": "BRIDGE-A/B/C/D（协议 §4 冻结解释；BRIDGE-C=HARD STOP）"
+  },
+  "git_commit": "5b935334f596e5f3e390b6e3fc3688eb7fe6d968",
+  "seeds": "N/A（两套 evaluator 均确定性、无 RNG）"
+}
