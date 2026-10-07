@@ -1,0 +1,879 @@
+{
+  "model": "v21pilot-H1-2500",
+  "step": 2500,
+  "sample_indices": [
+    0,
+    16,
+    32,
+    48,
+    64,
+    80,
+    97,
+    113,
+    129,
+    145,
+    161,
+    177,
+    193,
+    209,
+    225,
+    241
+  ],
+  "n_samples": 16,
+  "ladder_subset_sha256": "f03515fb087fbcb20f34aff497aa9769937728702712835542c9a26bbe25e74c",
+  "decoder": {
+    "by_block": {
+      "block1": {
+        "mean_recovery": 0.25928538364806,
+        "nfe_accounting_ok": true,
+        "rows": [
+          {
+            "sample": 0,
+            "recovery": 0.2,
+            "exact": 0.0,
+            "pseudo_nll": -5.559805527329445,
+            "n_rounds": 5,
+            "nfe": {
+              "predict": 5,
+              "select": 0,
+              "total": 5
+            }
+          },
+          {
+            "sample": 16,
+            "recovery": 0.2692307692307692,
+            "exact": 0.0,
+            "pseudo_nll": -34.293601052835584,
+            "n_rounds": 26,
+            "nfe": {
+              "predict": 26,
+              "select": 0,
+              "total": 26
+            }
+          },
+          {
+            "sample": 32,
+            "recovery": 0.03225806451612903,
+            "exact": 0.0,
+            "pseudo_nll": -26.874477211385965,
+            "n_rounds": 31,
+            "nfe": {
+              "predict": 31,
+              "select": 0,
+              "total": 31
+            }
+          },
+          {
+            "sample": 48,
+            "recovery": 0.4,
+            "exact": 0.0,
+            "pseudo_nll": -9.74999244720675,
+            "n_rounds": 10,
+            "nfe": {
+              "predict": 10,
+              "select": 0,
+              "total": 10
+            }
+          },
+          {
+            "sample": 64,
+            "recovery": 0.12121212121212122,
+            "exact": 0.0,
+            "pseudo_nll": -39.39234356954694,
+            "n_rounds": 33,
+            "nfe": {
+              "predict": 33,
+              "select": 0,
+              "total": 33
+            }
+          },
+          {
+            "sample": 80,
+            "recovery": 0.022727272727272728,
+            "exact": 0.0,
+            "pseudo_nll": -59.80812233686447,
+            "n_rounds": 44,
+            "nfe": {
+              "predict": 44,
+              "select": 0,
+              "total": 44
+            }
+          },
+          {
+            "sample": 97,
+            "recovery": 0.14285714285714285,
+            "exact": 0.0,
+            "pseudo_nll": -13.020386591553688,
+            "n_rounds": 14,
+            "nfe": {
+              "predict": 14,
+              "select": 0,
+              "total": 14
+            }
+          },
+          {
+            "sample": 113,
+            "recovery": 0.10714285714285714,
+            "exact": 0.0,
+            "pseudo_nll": -41.9872165620327,
+            "n_rounds": 28,
+            "nfe": {
+              "predict": 28,
+              "select": 0,
+              "total": 28
+            }
+          },
+          {
+            "sample": 129,
+            "recovery": 0.5,
+            "exact": 0.0,
+            "pseudo_nll": -7.902286220341921,
+            "n_rounds": 10,
+            "nfe": {
+              "predict": 10,
+              "select": 0,
+              "total": 10
+            }
+          },
+          {
+            "sample": 145,
+            "recovery": 0.21739130434782608,
+            "exact": 0.0,
+            "pseudo_nll": -19.181278909556568,
+            "n_rounds": 23,
+            "nfe": {
+              "predict": 23,
+              "select": 0,
+              "total": 23
+            }
+          },
+          {
+            "sample": 161,
+            "recovery": 0.0,
+            "exact": 0.0,
+            "pseudo_nll": -22.514566473662853,
+            "n_rounds": 16,
+            "nfe": {
+              "predict": 16,
+              "select": 0,
+              "total": 16
+            }
+          },
+          {
+            "sample": 177,
+            "recovery": 1.0,
+            "exact": 1.0,
+            "pseudo_nll": -0.10558175481855869,
+            "n_rounds": 3,
+            "nfe": {
+              "predict": 3,
+              "select": 0,
+              "total": 3
+            }
+          },
+          {
+            "sample": 193,
+            "recovery": 0.058823529411764705,
+            "exact": 0.0,
+            "pseudo_nll": -11.971418008208275,
+            "n_rounds": 17,
+            "nfe": {
+              "predict": 17,
+              "select": 0,
+              "total": 17
+            }
+          },
+          {
+            "sample": 209,
+            "recovery": 0.07692307692307693,
+            "exact": 0.0,
+            "pseudo_nll": -14.58322861418128,
+            "n_rounds": 26,
+            "nfe": {
+              "predict": 26,
+              "select": 0,
+              "total": 26
+            }
+          },
+          {
+            "sample": 225,
+            "recovery": 0.5,
+            "exact": 0.0,
+            "pseudo_nll": -12.446418778970838,
+            "n_rounds": 14,
+            "nfe": {
+              "predict": 14,
+              "select": 0,
+              "total": 14
+            }
+          },
+          {
+            "sample": 241,
+            "recovery": 0.5,
+            "exact": 0.0,
+            "pseudo_nll": -9.437232220545411,
+            "n_rounds": 16,
+            "nfe": {
+              "predict": 16,
+              "select": 0,
+              "total": 16
+            }
+          }
+        ]
+      },
+      "block2": {
+        "mean_recovery": 0.2824887953310474,
+        "nfe_accounting_ok": true,
+        "rows": [
+          {
+            "sample": 0,
+            "recovery": 0.2,
+            "exact": 0.0,
+            "pseudo_nll": -6.201902389526367,
+            "n_rounds": 3,
+            "nfe": {
+              "predict": 3,
+              "select": 0,
+              "total": 3
+            }
+          },
+          {
+            "sample": 16,
+            "recovery": 0.2692307692307692,
+            "exact": 0.0,
+            "pseudo_nll": -34.94014776311815,
+            "n_rounds": 13,
+            "nfe": {
+              "predict": 13,
+              "select": 0,
+              "total": 13
+            }
+          },
+          {
+            "sample": 32,
+            "recovery": 0.2903225806451613,
+            "exact": 0.0,
+            "pseudo_nll": -26.327859141863883,
+            "n_rounds": 16,
+            "nfe": {
+              "predict": 16,
+              "select": 0,
+              "total": 16
+            }
+          },
+          {
+            "sample": 48,
+            "recovery": 0.4,
+            "exact": 0.0,
+            "pseudo_nll": -8.896614104742184,
+            "n_rounds": 5,
+            "nfe": {
+              "predict": 5,
+              "select": 0,
+              "total": 5
+            }
+          },
+          {
+            "sample": 64,
+            "recovery": 0.12121212121212122,
+            "exact": 0.0,
+            "pseudo_nll": -45.41094037890434,
+            "n_rounds": 17,
+            "nfe": {
+              "predict": 17,
+              "select": 0,
+              "total": 17
+            }
+          },
+          {
+            "sample": 80,
+            "recovery": 0.0,
+            "exact": 0.0,
+            "pseudo_nll": -50.84726586565375,
+            "n_rounds": 22,
+            "nfe": {
+              "predict": 22,
+              "select": 0,
+              "total": 22
+            }
+          },
+          {
+            "sample": 97,
+            "recovery": 0.07142857142857142,
+            "exact": 0.0,
+            "pseudo_nll": -13.035632595419884,
+            "n_rounds": 7,
+            "nfe": {
+              "predict": 7,
+              "select": 0,
+              "total": 7
+            }
+          },
+          {
+            "sample": 113,
+            "recovery": 0.07142857142857142,
+            "exact": 0.0,
+            "pseudo_nll": -42.55859690532088,
+            "n_rounds": 14,
+            "nfe": {
+              "predict": 14,
+              "select": 0,
+              "total": 14
+            }
+          },
+          {
+            "sample": 129,
+            "recovery": 0.7,
+            "exact": 0.0,
+            "pseudo_nll": -7.6780556328594685,
+            "n_rounds": 5,
+            "nfe": {
+              "predict": 5,
+              "select": 0,
+              "total": 5
+            }
+          },
+          {
+            "sample": 145,
+            "recovery": 0.17391304347826086,
+            "exact": 0.0,
+            "pseudo_nll": -20.7942286580801,
+            "n_rounds": 12,
+            "nfe": {
+              "predict": 12,
+              "select": 0,
+              "total": 12
+            }
+          },
+          {
+            "sample": 161,
+            "recovery": 0.0,
+            "exact": 0.0,
+            "pseudo_nll": -29.266854226589203,
+            "n_rounds": 8,
+            "nfe": {
+              "predict": 8,
+              "select": 0,
+              "total": 8
+            }
+          },
+          {
+            "sample": 177,
+            "recovery": 1.0,
+            "exact": 1.0,
+            "pseudo_nll": -0.106318524107337,
+            "n_rounds": 2,
+            "nfe": {
+              "predict": 2,
+              "select": 0,
+              "total": 2
+            }
+          },
+          {
+            "sample": 193,
+            "recovery": 0.058823529411764705,
+            "exact": 0.0,
+            "pseudo_nll": -13.541628893464804,
+            "n_rounds": 9,
+            "nfe": {
+              "predict": 9,
+              "select": 0,
+              "total": 9
+            }
+          },
+          {
+            "sample": 209,
+            "recovery": 0.038461538461538464,
+            "exact": 0.0,
+            "pseudo_nll": -21.96300713531673,
+            "n_rounds": 13,
+            "nfe": {
+              "predict": 13,
+              "select": 0,
+              "total": 13
+            }
+          },
+          {
+            "sample": 225,
+            "recovery": 0.5,
+            "exact": 0.0,
+            "pseudo_nll": -13.657113840803504,
+            "n_rounds": 7,
+            "nfe": {
+              "predict": 7,
+              "select": 0,
+              "total": 7
+            }
+          },
+          {
+            "sample": 241,
+            "recovery": 0.625,
+            "exact": 0.0,
+            "pseudo_nll": -10.675636101514101,
+            "n_rounds": 8,
+            "nfe": {
+              "predict": 8,
+              "select": 0,
+              "total": 8
+            }
+          }
+        ]
+      },
+      "block4": {
+        "mean_recovery": 0.26778579401667685,
+        "nfe_accounting_ok": true,
+        "rows": [
+          {
+            "sample": 0,
+            "recovery": 0.2,
+            "exact": 0.0,
+            "pseudo_nll": -6.607803702354431,
+            "n_rounds": 2,
+            "nfe": {
+              "predict": 2,
+              "select": 0,
+              "total": 2
+            }
+          },
+          {
+            "sample": 16,
+            "recovery": 0.15384615384615385,
+            "exact": 0.0,
+            "pseudo_nll": -39.989165395498276,
+            "n_rounds": 7,
+            "nfe": {
+              "predict": 7,
+              "select": 0,
+              "total": 7
+            }
+          },
+          {
+            "sample": 32,
+            "recovery": 0.03225806451612903,
+            "exact": 0.0,
+            "pseudo_nll": -32.970635160803795,
+            "n_rounds": 8,
+            "nfe": {
+              "predict": 8,
+              "select": 0,
+              "total": 8
+            }
+          },
+          {
+            "sample": 48,
+            "recovery": 0.4,
+            "exact": 0.0,
+            "pseudo_nll": -8.970476310933009,
+            "n_rounds": 3,
+            "nfe": {
+              "predict": 3,
+              "select": 0,
+              "total": 3
+            }
+          },
+          {
+            "sample": 64,
+            "recovery": 0.15151515151515152,
+            "exact": 0.0,
+            "pseudo_nll": -42.470363050699234,
+            "n_rounds": 9,
+            "nfe": {
+              "predict": 9,
+              "select": 0,
+              "total": 9
+            }
+          },
+          {
+            "sample": 80,
+            "recovery": 0.022727272727272728,
+            "exact": 0.0,
+            "pseudo_nll": -66.65334832668304,
+            "n_rounds": 11,
+            "nfe": {
+              "predict": 11,
+              "select": 0,
+              "total": 11
+            }
+          },
+          {
+            "sample": 97,
+            "recovery": 0.07142857142857142,
+            "exact": 0.0,
+            "pseudo_nll": -17.187687516212463,
+            "n_rounds": 4,
+            "nfe": {
+              "predict": 4,
+              "select": 0,
+              "total": 4
+            }
+          },
+          {
+            "sample": 113,
+            "recovery": 0.10714285714285714,
+            "exact": 0.0,
+            "pseudo_nll": -45.95175216719508,
+            "n_rounds": 7,
+            "nfe": {
+              "predict": 7,
+              "select": 0,
+              "total": 7
+            }
+          },
+          {
+            "sample": 129,
+            "recovery": 0.6,
+            "exact": 0.0,
+            "pseudo_nll": -7.6203835643827915,
+            "n_rounds": 3,
+            "nfe": {
+              "predict": 3,
+              "select": 0,
+              "total": 3
+            }
+          },
+          {
+            "sample": 145,
+            "recovery": 0.2608695652173913,
+            "exact": 0.0,
+            "pseudo_nll": -21.653793537057936,
+            "n_rounds": 6,
+            "nfe": {
+              "predict": 6,
+              "select": 0,
+              "total": 6
+            }
+          },
+          {
+            "sample": 161,
+            "recovery": 0.0625,
+            "exact": 0.0,
+            "pseudo_nll": -33.096771121025085,
+            "n_rounds": 4,
+            "nfe": {
+              "predict": 4,
+              "select": 0,
+              "total": 4
+            }
+          },
+          {
+            "sample": 177,
+            "recovery": 1.0,
+            "exact": 1.0,
+            "pseudo_nll": -0.10673733986914158,
+            "n_rounds": 1,
+            "nfe": {
+              "predict": 1,
+              "select": 0,
+              "total": 1
+            }
+          },
+          {
+            "sample": 193,
+            "recovery": 0.058823529411764705,
+            "exact": 0.0,
+            "pseudo_nll": -17.681073676794767,
+            "n_rounds": 5,
+            "nfe": {
+              "predict": 5,
+              "select": 0,
+              "total": 5
+            }
+          },
+          {
+            "sample": 209,
+            "recovery": 0.038461538461538464,
+            "exact": 0.0,
+            "pseudo_nll": -28.15485230833292,
+            "n_rounds": 7,
+            "nfe": {
+              "predict": 7,
+              "select": 0,
+              "total": 7
+            }
+          },
+          {
+            "sample": 225,
+            "recovery": 0.5,
+            "exact": 0.0,
+            "pseudo_nll": -15.871291568502784,
+            "n_rounds": 4,
+            "nfe": {
+              "predict": 4,
+              "select": 0,
+              "total": 4
+            }
+          },
+          {
+            "sample": 241,
+            "recovery": 0.625,
+            "exact": 0.0,
+            "pseudo_nll": -13.343792390078306,
+            "n_rounds": 4,
+            "nfe": {
+              "predict": 4,
+              "select": 0,
+              "total": 4
+            }
+          }
+        ]
+      },
+      "block8": {
+        "mean_recovery": 0.2822787775116765,
+        "nfe_accounting_ok": true,
+        "rows": [
+          {
+            "sample": 0,
+            "recovery": 0.2,
+            "exact": 0.0,
+            "pseudo_nll": -7.147582530975342,
+            "n_rounds": 1,
+            "nfe": {
+              "predict": 1,
+              "select": 0,
+              "total": 1
+            }
+          },
+          {
+            "sample": 16,
+            "recovery": 0.15384615384615385,
+            "exact": 0.0,
+            "pseudo_nll": -39.80038958787918,
+            "n_rounds": 4,
+            "nfe": {
+              "predict": 4,
+              "select": 0,
+              "total": 4
+            }
+          },
+          {
+            "sample": 32,
+            "recovery": 0.16129032258064516,
+            "exact": 0.0,
+            "pseudo_nll": -43.56382258236408,
+            "n_rounds": 4,
+            "nfe": {
+              "predict": 4,
+              "select": 0,
+              "total": 4
+            }
+          },
+          {
+            "sample": 48,
+            "recovery": 0.4,
+            "exact": 0.0,
+            "pseudo_nll": -9.18466678657569,
+            "n_rounds": 2,
+            "nfe": {
+              "predict": 2,
+              "select": 0,
+              "total": 2
+            }
+          },
+          {
+            "sample": 64,
+            "recovery": 0.09090909090909091,
+            "exact": 0.0,
+            "pseudo_nll": -55.90849211812019,
+            "n_rounds": 5,
+            "nfe": {
+              "predict": 5,
+              "select": 0,
+              "total": 5
+            }
+          },
+          {
+            "sample": 80,
+            "recovery": 0.022727272727272728,
+            "exact": 0.0,
+            "pseudo_nll": -63.53593298792839,
+            "n_rounds": 6,
+            "nfe": {
+              "predict": 6,
+              "select": 0,
+              "total": 6
+            }
+          },
+          {
+            "sample": 97,
+            "recovery": 0.07142857142857142,
+            "exact": 0.0,
+            "pseudo_nll": -17.075076699256897,
+            "n_rounds": 2,
+            "nfe": {
+              "predict": 2,
+              "select": 0,
+              "total": 2
+            }
+          },
+          {
+            "sample": 113,
+            "recovery": 0.10714285714285714,
+            "exact": 0.0,
+            "pseudo_nll": -48.339759349823,
+            "n_rounds": 4,
+            "nfe": {
+              "predict": 4,
+              "select": 0,
+              "total": 4
+            }
+          },
+          {
+            "sample": 129,
+            "recovery": 0.6,
+            "exact": 0.0,
+            "pseudo_nll": -8.061972562223673,
+            "n_rounds": 2,
+            "nfe": {
+              "predict": 2,
+              "select": 0,
+              "total": 2
+            }
+          },
+          {
+            "sample": 145,
+            "recovery": 0.2608695652173913,
+            "exact": 0.0,
+            "pseudo_nll": -23.1706108385697,
+            "n_rounds": 3,
+            "nfe": {
+              "predict": 3,
+              "select": 0,
+              "total": 3
+            }
+          },
+          {
+            "sample": 161,
+            "recovery": 0.1875,
+            "exact": 0.0,
+            "pseudo_nll": -37.773871183395386,
+            "n_rounds": 2,
+            "nfe": {
+              "predict": 2,
+              "select": 0,
+              "total": 2
+            }
+          },
+          {
+            "sample": 177,
+            "recovery": 1.0,
+            "exact": 1.0,
+            "pseudo_nll": -0.10673733986914158,
+            "n_rounds": 1,
+            "nfe": {
+              "predict": 1,
+              "select": 0,
+              "total": 1
+            }
+          },
+          {
+            "sample": 193,
+            "recovery": 0.058823529411764705,
+            "exact": 0.0,
+            "pseudo_nll": -27.879551004618406,
+            "n_rounds": 3,
+            "nfe": {
+              "predict": 3,
+              "select": 0,
+              "total": 3
+            }
+          },
+          {
+            "sample": 209,
+            "recovery": 0.07692307692307693,
+            "exact": 0.0,
+            "pseudo_nll": -47.74061466380954,
+            "n_rounds": 4,
+            "nfe": {
+              "predict": 4,
+              "select": 0,
+              "total": 4
+            }
+          },
+          {
+            "sample": 225,
+            "recovery": 0.5,
+            "exact": 0.0,
+            "pseudo_nll": -15.724347678944468,
+            "n_rounds": 2,
+            "nfe": {
+              "predict": 2,
+              "select": 0,
+              "total": 2
+            }
+          },
+          {
+            "sample": 241,
+            "recovery": 0.625,
+            "exact": 0.0,
+            "pseudo_nll": -20.880205493420362,
+            "n_rounds": 2,
+            "nfe": {
+              "predict": 2,
+              "select": 0,
+              "total": 2
+            }
+          }
+        ]
+      }
+    },
+    "determinism_ok": true,
+    "block1_one_per_round_ok": true,
+    "sampled": [
+      {
+        "sample": 0,
+        "recovery": 0.2,
+        "nfe": {
+          "predict": 3,
+          "select": 0,
+          "total": 3
+        }
+      },
+      {
+        "sample": 16,
+        "recovery": 0.11538461538461539,
+        "nfe": {
+          "predict": 13,
+          "select": 0,
+          "total": 13
+        }
+      },
+      {
+        "sample": 32,
+        "recovery": 0.0,
+        "nfe": {
+          "predict": 16,
+          "select": 0,
+          "total": 16
+        }
+      },
+      {
+        "sample": 48,
+        "recovery": 0.4,
+        "nfe": {
+          "predict": 5,
+          "select": 0,
+          "total": 5
+        }
+      }
+    ]
+  },
+  "pairs": {
+    "js_dep_mean": 0.041559846958615,
+    "checks": {
+      "all_finite": true,
+      "js_in_bounds": true,
+      "delta_algebra": true
+    }
+  },
+  "checks": {
+    "decoder": {
+      "nfe_total_eq_rounds": true,
+      "nfe_select_zero": true,
+      "deterministic": true,
+      "block1_reference": true,
+      "recovery_in_range": true
+    }
+  },
+  "vram_gb": 3.942668288,
+  "runtime_s": 25.91285014152527
+}
