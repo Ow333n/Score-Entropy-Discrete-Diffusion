@@ -206,7 +206,10 @@
   (B_candidate_unadjudicated)、**`optionb_case_adjudication.md`(FINAL Case A)**
 - Report / verdict:人工终裁 Case A(限定 early attenuation)
 - Local checkpoint:无(只读引用 EXP-17 权重)
-- Claim-IDs:C-03 C-16 C-17 C-18 C-19
+- Claim-IDs:C-03 C-16 C-17 C-18
+  (**C-19 关联仅为 descriptive motivation**:EXP-19 的 saturation/rebound 观测
+  是 RQ2 的研究动机来源;**RQ2 本身状态 = NOT_EXECUTED**,EXP-19 不是 RQ2 的
+  正式机制验证,见 claim map C-19)
 - Asset status:ACTIVE_EVIDENCE
 - Provenance limitations:750–1020 窗口无内点;机械 Case B 输出从未入库
 
@@ -247,23 +250,31 @@
 | 预计 git 增量 | ≈1.6MB(10 文件) | 0(仅清单文件 ~1KB) |
 | 建议 | **首选**(体积极小、JSON 文本、与 git 哲学一致) | 作为 A 之外的冗余第二副本 |
 
-## 5. exp_local 权重盘点(统一 GiB 口径,2026-10-08 实测)
+## 5. exp_local 权重盘点(统一 GiB 口径,2026-10-08 实测并复核)
 
-总计 **106.8 GiB(114.7 GB decimal)**——此前 "107G" 为 du -sh 的十进制 GB 约数。
+总计 **106.83 GiB(114.70 GB decimal)**(分项复核:mechpilot 20.22 +
+formal 20.22 + optionb 21.49 + v21pilot 15.19 + p1 10.11 + rlpilot 10.11 +
+其余 9.48 = 106.83 ✓)。此前 "107G" 为 du -sh 的十进制 GB 约数。
 无任何权重有独立备份;全部可分项确定性重训;SHA256 全量成本 ≈10–15 分钟(仅磁盘读)。
 
-| 资产 | 大小 | 备份 | deterministic replay 验证 | 保留优先级 |
+**Replay 验证四级标签**(防止把局部 gate 外推为全量 replay):
+① `tensor-exact` = checkpoint 张量逐位复现(仅覆盖实际比对的 checkpoint 范围);
+② `matched gate verification` = 预注册守卫逐位通过(digest/E_comp/C̄ 等);
+③ `metric-level agreement` = loss/指标逐位一致(不含权重逐位);
+④ `only theoretically reproducible` = 未执行任何 replay 验证。
+
+| 资产 | 大小 | 备份 | replay 验证级别(范围限定) | 保留优先级 |
 |---|---|---|---|---|
-| optionb dense ×2 | 10.74 GiB×2 | ❌ | ✅ tensor-exact(EXP-18 双 gate) | **P1(终裁唯一载体)** |
-| formal ×2 | 10.11 GiB×2 | ❌ | ✅(Gate-2 链) | P1 |
-| p1 ×2 | 5.06 GiB×2 | ❌ | ✅(由 EXP-17 证明等价) | P1 |
-| rlpilot | 10.11 GiB | ❌ | 未验证 | P2 |
-| mechpilot ×8 | 2.53 GiB×8 = 20.2 | ❌ | 未验证 | P2 |
-| v21pilot ×6 | 2.53 GiB×6 = 15.2 | ❌ | 未验证(digest 守卫已过) | P2 |
-| k-ablation | 2.53 GiB | ❌ | 未验证 | P3 |
-| v21smoke ×4 | 1.90 GiB×3 + 8KB = 5.7 | ❌ | 未验证 | P4(归档候选) |
-| mechpilot_shared(step0 锚点) | 1.26 GiB | ❌ | 可由 load_model 重建 | P4 |
-| frozen maps | 1.6MB | ❌ | ✅ SHA 实测全 MATCH | **P1(见 §4)** |
+| optionb dense ×2 | 10.74 GiB×2 | ❌ | ① tensor-exact(仅共享的 10 个 ckpt 50–750 + 500 model;1020/1500/2500 无旧副本可比)+ ③ curve 逐位 | **P1(终裁唯一载体)** |
+| formal ×2 | 10.11 GiB×2 | ❌ | ② 锚点 bitwise(1020 EMA 经 official gate)+ ③ curve 逐位;5100/10200 未 replay | P1 |
+| p1 ×2 | 5.06 GiB×2 | ❌ | ② 锚点 bitwise(2500 EMA+model 经 official gate)+ ③ curve 逐位;中间 ckpt 已删无法 replay | P1 |
+| rlpilot | 10.11 GiB | ❌ | ④ only theoretically reproducible | P2 |
+| mechpilot ×8 | 2.53 GiB×8 = 20.22 | ❌ | ④ only theoretically reproducible | P2 |
+| v21pilot ×6 | 2.53 GiB×6 = 15.19 | ❌ | ② matched gate verification(结束守卫 digest/E_comp/C̄ vs dryrun 逐位)+ ④ 权重本身未 replay | P2 |
+| k-ablation | 2.53 GiB | ❌ | ④ only theoretically reproducible | P3 |
+| v21smoke ×4 | 1.90 GiB×3 + 8KB = 5.7 | ❌ | ② matched gate verification(smoke digest= dryrun prefix) | P4(归档候选) |
+| mechpilot_shared(step0 锚点) | 1.26 GiB | ❌ | ④ 可由 load_model 重建(未 replay) | P4 |
+| frozen maps | 1.6MB | ❌ | ② SHA 实测全 MATCH(sidecar+manifest+train.log 三方) | **P1(见 §4)** |
 
 ## 6. 纪律声明
 
