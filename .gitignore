@@ -18,7 +18,18 @@ assets/
 **.pth
 **.npz
 core
+# FP32 bulk 结果目录（results/phase1_diag/core/）不是 core dump，显式豁免
+!results/phase1_diag/core/
 **.log
+# 临时文件 / 环境文件 / Python 缓存（2026-10-08 cleanup 1A）
+*.tmp
+*.pth.tmp
+.env
+.env.*
+!.env.example
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
 *.jsonl
 *.pt
 .venv/
