@@ -1,9 +1,11 @@
 # START HERE — SEDD Post-Training Order Compatibility 项目导航
 
-> 状态：**DRAFT(待用户审查,2026-10-08)**。本文件是项目证据体系的入口;
-> 生成依据:4 个只读审计(protocol/gates、全部 28 个实际 run、evaluation/results、
-> git 93 commit 修订史)。**本文件不修改任何 frozen 结论**——它只建立
-> "结论 → 实验 → 证据文件"的可追溯链条。
+> 状态：**REVIEWED(2026-10-08,证据体系与一致性修订已经用户审查)**。
+> REVIEWED 仅指导航层 / 证据体系的组织通过审查,**不意味着任何底层科研假设获得
+> 证明**;各结论的证据等级见 CLAIM_EVIDENCE_MAP 分类体系。
+> 本文件是项目证据体系的入口;生成依据:4 个只读审计(protocol/gates、全部 28 个
+> 实际 run、evaluation/results、git 93 commit 修订史)。**本文件不修改任何 frozen
+> 结论**——它只建立"结论 → 实验 → 证据文件"的可追溯链条。
 
 ---
 

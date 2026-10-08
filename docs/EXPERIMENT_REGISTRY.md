@@ -1,6 +1,8 @@
 # EXPERIMENT REGISTRY — SEDD Order Compatibility 全实验登记册
 
-> 状态:**DRAFT(待用户审查,2026-10-08)**。
+> 状态:**REVIEWED(2026-10-08,证据体系与一致性修订已经用户审查)**。
+> REVIEWED 仅指导航层 / 证据体系的组织通过审查,**不意味着任何底层科研假设获得
+> 证明**;各实验的结论分类见本文件第 0 节。
 > 依据:exp_local/regime_a/ 全部 28 个 run 目录的 train.log / run_metadata.json /
 > learning_curve.csv / checkpoint 实测 + 93 个 git commit + protocol/errata 原文。
 > 每条 recipe 均为**日志实证**(不是 protocol 文本);protocol-vs-实际偏差在
