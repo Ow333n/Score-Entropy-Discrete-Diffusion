@@ -3,14 +3,14 @@
 
 > **📌 课程项目导航（Course Project）**：本仓库同时包含一个完整的离散扩散语言模型（dLLM）后训练研究项目：partial-reveal SFT → on-policy RL → Reveal-Order Compatibility 分析（CPI / OrderGap），并提供无 GPU 依赖的交互式 Demo 与面试材料。
 >
-> - **研究导航主入口（最新科学结论，请先读这个）**：[docs/START_HERE.md](docs/START_HERE.md)
+> - **研究导航主入口（当前研究状态与证据导航）**：[docs/START_HERE.md](docs/START_HERE.md)
 >   —— 当前科学状态分为三层：Scientific Findings / Mechanism Status / Evidence
 >   Integrity（§6）；开放问题 RQ1（早期 CPI 衰减机制）与 RQ2（residual gap，
 >   NOT_EXECUTED）见 §2
 > - **全实验档案**：[docs/EXPERIMENT_REGISTRY.md](docs/EXPERIMENT_REGISTRY.md)（EXP-01…19）
 >   · **结论分级与证据映射**：[docs/CLAIM_EVIDENCE_MAP.md](docs/CLAIM_EVIDENCE_MAP.md)
 > - **交互式 Demo**（预计算模式，无需 GPU / 不加载模型 / 不联网）：[README/demo.md](README/demo.md)，启动 `.venv/bin/python demo/app.py`
-> - **RL 阶段最终结论快照（2026-10-05；不含 Phase 1/2 与 Option B 裁定）**：[reports/final_findings_and_lessons.md](reports/final_findings_and_lessons.md)
+> - **RL 阶段历史结论快照（2026-10-05；不含 Phase 1/2 与 Option B 裁定）**：[reports/final_findings_and_lessons.md](reports/final_findings_and_lessons.md)
 > - **文献核查与 novelty 边界（prior work 定位）**：[reports/literature_check.md](reports/literature_check.md) · **汇报大纲（8 页）**：[reports/final_presentation_outline.md](reports/final_presentation_outline.md)
 > - **面试讲稿（30s / 2min / 5min）**：[README/interview_demo.md](README/interview_demo.md) · **技术 Q&A（41 题）**：[README/interview_qa.md](README/interview_qa.md)
 > - **评估结果 provenance / errata（append-only）**：[protocol/errata_v4.2_eval_provenance.md](protocol/errata_v4.2_eval_provenance.md)
