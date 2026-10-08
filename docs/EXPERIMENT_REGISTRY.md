@@ -60,7 +60,8 @@
   1-t 值 38.5 被取代);loss 全程 finite。
 - **Gate verdict**:smoke 验收 PASS。
 - **Confounds/偏差**:batch 语义记录错误(已修正,`scripts/check_batch_semantics.py`)。
-- **Artifacts**:`exp_local/regime_a/pilot_console.log`;MEMORY.md Day 2–3 段。
+- **Artifacts**:MEMORY.md Day 2–3 段(**无独立原始报告**——本实验的证据以
+  MEMORY.md 的环境/smoke 记录为准,不制造不存在的原始实验数据)。
 - **分类**:VALIDATED_OBSERVATION(工程校准级)。**保留**:是(环境事实)。
 
 ### EXP-02 LR 探针 + vanilla pilot N 定案(2026-10-01,压缩于 `de69bb9`)
@@ -69,7 +70,10 @@
 - **实际 recipe**:n_iters=30000 探针(pilot-132632,lr=3e-4,发散记录在案)→
   1e-4(摇摆)→ **3e-5 定案**;plateau K=6/eps 0.005/alpha 1.2 → N_hat。
 - **主要发现**:3e-4 发散、1e-4 摇摆、3e-5 稳定 → 冻结 base_lr=3e-5、N=10200。
-- **Artifacts**:`protocol/regime_a_protocol.yaml`(L40–62)、`exp_local/regime_a/pilot_console.log`。
+- **Artifacts**:`protocol/regime_a_protocol.yaml`(L40–62)、
+  `exp_local/regime_a/pilot_console.log`(LR 探针控制台,截断于 step 2600)、
+  `reports/pilot_report/data/lrprobe_{1e-4,3e-4,3e-5}_learning_curve.csv`
+  (LR 定案的最完整原始曲线)。
 - **分类**:VALIDATED_OBSERVATION。**保留**:是。
 
 ### EXP-03 formal vanilla SFT ×2 seeds(2026-10-01,`de69bb9`)

@@ -72,6 +72,7 @@ docs/
   START_HERE.md             ← 你在这里
   EXPERIMENT_REGISTRY.md    ← 19 个实验的完整档案(唯一 EXP-ID)
   CLAIM_EVIDENCE_MAP.md     ← 结论分级 + 专项审计 + evidence coverage audit
+  ASSET_INDEX.md            ← EXP-ID → 资产路径总索引(纯指针,不复制结论)
 protocol/                   ← 全部 frozen 协议/errata/manifest(22 文件,sha256 sidecar 锁定)
 reports/                    ← stage4 报告、v1.2/v2.1 报告、审计报告(定案口径)
 results/                    ← 全部评估 JSON 与 gate 判定(入库、可 git 追溯)
