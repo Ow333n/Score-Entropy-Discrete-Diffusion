@@ -230,7 +230,9 @@
 
 ## 4. Frozen v2.1 maps — BACKUP_PRIORITY_1 / RUNTIME_DEPENDENCY
 
-- 路径:`exp_local/regime_a/mechpilot_v21_maps/`(共 10 文件,≈1.6MB,**不入 git**)
+- 路径:`exp_local/regime_a/mechpilot_v21_maps/`(共 10 文件,≈1.6MB;
+  **已纳入 git(2026-10-08 Phase 2C)——exp_local 的唯一例外**,带
+  `.gitattributes` byte-exact 保护)
 - 内容:maps_rep1/rep2/heldout.json + order_gap_subset_indices.json + maps_manifest.json
   + 5 个 .sha256 sidecar
 - **完整性验证(2026-10-08 实测)**:4 个数据文件 + manifest 的 SHA256 与各自
@@ -255,7 +257,8 @@
 总计 **106.83 GiB(114.70 GB decimal)**(分项复核:mechpilot 20.22 +
 formal 20.22 + optionb 21.49 + v21pilot 15.19 + p1 10.11 + rlpilot 10.11 +
 其余 9.48 = 106.83 ✓)。此前 "107G" 为 du -sh 的十进制 GB 约数。
-无任何权重有独立备份;全部可分项确定性重训;SHA256 全量成本 ≈10–15 分钟(仅磁盘读)。
+除 frozen maps 已纳入 git(见 §4)外,无任何权重有独立备份;全部可分项确定性
+重训;SHA256 全量成本 ≈10–15 分钟(仅磁盘读)。
 
 **Replay 验证四级标签**(防止把局部 gate 外推为全量 replay):
 ① `tensor-exact` = checkpoint 张量逐位复现(仅覆盖实际比对的 checkpoint 范围);
@@ -274,7 +277,7 @@ formal 20.22 + optionb 21.49 + v21pilot 15.19 + p1 10.11 + rlpilot 10.11 +
 | k-ablation | 2.53 GiB | ❌ | ④ only theoretically reproducible | P3 |
 | v21smoke ×4 | 1.90 GiB×3 + 8KB = 5.7 | ❌ | ② matched gate verification(smoke digest= dryrun prefix) | P4(归档候选) |
 | mechpilot_shared(step0 锚点) | 1.26 GiB | ❌ | ④ 可由 load_model 重建(未 replay) | P4 |
-| frozen maps | 1.6MB | ❌ | ② SHA 实测全 MATCH(sidecar+manifest+train.log 三方) | **P1(见 §4)** |
+| frozen maps | 1.6MB | **git ✓(2026-10-08 Phase 2C,byte-exact)** | ② SHA 实测全 MATCH(sidecar+manifest+train.log 三方) | **P1(见 §4)** |
 
 ## 6. 纪律声明
 

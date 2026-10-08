@@ -160,8 +160,12 @@ NOT_EXECUTED                计划过但从未执行
 
 ## 8. 已知坑(引用任何结论前必读)
 
-- **exp_local/ 不入 git**:权重与 train.log 在磁盘,git 里只有结果 JSON 与 gate
-  证明;引用"实际配置"必须回到 exp_local 日志(registry 已代劳)。
+- **exp_local/ 不入 git**(唯一例外见下):权重与 train.log 在磁盘,git 里只有
+  结果 JSON 与 gate 证明;引用"实际配置"必须回到 exp_local 日志(registry 已代劳)。
+  **唯一例外**:frozen v2.1 pair maps(`exp_local/regime_a/mechpilot_v21_maps/`,
+  10 文件)已于 2026-10-08 纳入 git(Phase 2C),带 byte-exact 保护
+  (`.gitattributes` 的 `-text` 规则),SHA256 经 sidecar/manifest/train.log
+  三方对拍。
 - **BF16 vs FP32**:2026-10-07 之前的 CPI/CE/OG 数值多为 BF16 口径;精细
   dynamics 一律引用 `results/phase1_diag/core/`、`results/phase2/*` 的 FP32 值。
 - **protocol 文本 ≠ 实际执行**:LR(3e-5 vs 3e-4)与 dropout(0 vs 0.1)两处偏差,

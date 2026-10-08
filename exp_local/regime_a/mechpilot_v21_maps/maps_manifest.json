@@ -1,0 +1,26 @@
+{
+  "protocol": "mechanism_complementary_exposure_v2_1",
+  "protocol_sha256": "af312d864d41d8f67da343d55a8dee8a29a91c37dea622e6b2c4b22ef441fc61",
+  "generated_at": "2026-10-06",
+  "git_commit": "7dd176dbb924ab9b553b7dc30a2be3a726c53294",
+  "map_seed_base_rep": 10000,
+  "map_seed_base_heldout": 11000,
+  "span_range": [
+    10,
+    50
+  ],
+  "seq_len": 256,
+  "order_gap_subset_rule": "evenly_spaced_round(0..499, 64)",
+  "files": [
+    "maps_heldout.json",
+    "maps_rep1.json",
+    "maps_rep2.json",
+    "order_gap_subset_indices.json"
+  ],
+  "file_sha256": {
+    "maps_heldout.json": "1a1463559330cc7976be5bd7b0f5f39fdc65ec444c36979847fa1dc5ce2eeaea",
+    "maps_rep1.json": "6e38db431c826c876d85217783e7bbf1a624e0c01114997aeaed6968bcc97eff",
+    "maps_rep2.json": "532f1b52e5050cb8c102ae7f9a1bf592363ade43da2d842a6502e3a91a60c94e",
+    "order_gap_subset_indices.json": "e9009513f1e9f817054d0d1195dad15f9ed016705e49f91d13eb33fd02a345aa"
+  }
+}
