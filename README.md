@@ -11,7 +11,7 @@
 >   · **结论分级与证据映射**：[docs/CLAIM_EVIDENCE_MAP.md](docs/CLAIM_EVIDENCE_MAP.md)
 > - **交互式 Demo**（预计算模式，无需 GPU / 不加载模型 / 不联网）：[README/demo.md](README/demo.md)，启动 `.venv/bin/python demo/app.py`
 > - **RL 阶段历史结论快照（2026-10-05；不含 Phase 1/2 与 Option B 裁定）**：[reports/final_findings_and_lessons.md](reports/final_findings_and_lessons.md)
-> - **文献核查与 novelty 边界（prior work 定位）**：[reports/literature_check.md](reports/literature_check.md) · **汇报大纲（8 页）**：[reports/final_presentation_outline.md](reports/final_presentation_outline.md)
+> - **文献核查与 novelty 边界（prior work 定位）**：[reports/literature_check.md](reports/literature_check.md)
 > - **评估结果 provenance / errata（append-only）**：[protocol/errata_v4.2_eval_provenance.md](protocol/errata_v4.2_eval_provenance.md)
 >
 > 以下为 SEDD 论文复现与使用的上游说明。
