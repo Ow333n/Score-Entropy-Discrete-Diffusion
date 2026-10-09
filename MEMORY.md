@@ -335,8 +335,6 @@
 - [x] README/demo.md 完成；启动 `.venv/bin/python demo/app.py`（无 GPU）；剩余限制：15 固定样本、~10 关键帧非全 128 帧、RL-EMA 仅 secondary、无浏览器截图能力（页面结构以 HTML 描述）
 - [x] **K=1 vs K=4 100-step diagnostic ablation 完成（unattended 夜跑，Scenario B）**：preflight 原 8GiB RAM gate 在本机（total 7.3GiB）物理不可满足 → STOP → 用户裁定 amendment #1（机器适配 gate：avail≥5GiB + ratio≥0.65 + swap<1GiB + 无 heavy 进程）→ PASS 后重跑；smoke 5/5 PASS；两 run 100/100 零 OOM/NaN/dxg；**K4≈K1**（task 指标噪声级、compatibility 无结构性变化、drift 1.61e-4 vs 1.62e-4、zvg 同为 26/400）；K4 成本 +5.7% wall time、peak VRAM 与 K1 相同（sequential accumulation 生效）；j_rng 隔离实现（K1 与 K4 的 rollout action stream 逐位相同、K1 的 J = K4 首 J）；报告 reports/rl_k_ablation.md、结果 results/rl_k_ablation/、协议 protocol/rl_k_ablation_protocol.md
 - [x] 判读：单纯提高 K 不足以解决 weak task signal → 下一瓶颈候选：reward / group-relative objective / credit-assignment mechanism 本身；GPU 已释放（601MiB/0%），未启动任何后续实验
-- [x] **面试汇报中文化完成**（commit 9a31aef）：findings/lessons、8 页大纲、30s/2min/5min 讲稿、Q&A、中文 Research Story SVG、Demo 主文案中文（Noto Sans SC 字体内置）
-- [x] **技术表述修正 + Q&A 扩展至 41 题**（commit 3cbb7bc，用户逐条审查后）：SFT 正式步数 10200 全局清除；score=概率比定义；raw/staggered 改跨时间步修正表述；kernel 改 Bayes 逻辑（合理性×可达性）；parallel prediction + iterative revealing；K-ablation 全部降级（"没有证据表明是主要瓶颈"）；创新点→研究贡献（指标非原创，引用 curl/swap consistency）；30s pitch 压缩版；5min 讲稿 6 模块化；新增题含 128vs1024 gate 实测数值（0.2035 vs 0.2192、35.8s vs 279.4s）
 - [x] 收尾状态：无运行中进程/tmux，GPU 空闲（~1.8GB WDDM 开销），working tree clean，HEAD 3cbb7bc；下一步候选（等用户定）：RL-3 per-position PPO objective / 第二 seed / cross-task 验证
 
 ## 2026-10-06 mechanism pilot v1.2 关闭 + v2.1 设计期（DRAFT）
